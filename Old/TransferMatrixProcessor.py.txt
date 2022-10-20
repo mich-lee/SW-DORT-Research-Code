@@ -1,0 +1,124 @@
+import warnings
+import numpy as np
+import torch
+import matplotlib.pyplot as plt
+
+import copy
+
+from holotorch.CGH_Datatypes.ElectricField import ElectricField
+
+
+class TransferMatrixProcessor:
+	def __init__(	self,
+					inputBoolMask : torch.tensor,
+					inputFieldPrototype : ElectricField,
+					model : torch.nn.Module
+				):
+		self.inputBoolMask = inputBoolMask
+		self.inputFieldPrototype = copy.deepcopy(inputFieldPrototype)
+		self.model = model
+		self.H_mtx = torch.tensor([])
+
+	def measureTransferMatrix(self, numParallelColumns = 8):
+		heightIndGrid, widthIndGrid = torch.meshgrid(torch.tensor(range(self.inputFieldPrototype.data.shape[-2])), torch.tensor(range(self.inputFieldPrototype.data.shape[-1])))
+		heightInds = heightIndGrid[... , self.inputBoolMask]
+		widthInds = widthIndGrid[... , self.inputBoolMask]
+
+		matrixInputDimension = len(heightInds)
+		matrixOutputDimension = matrixInputDimension
+
+		H_mtx = torch.zeros(list(self.inputFieldPrototype.data.shape[0:-2]) + [matrixOutputDimension, matrixInputDimension]) + 0j
+
+		fieldTensorShape = []
+		parallelDim = -1
+		for i in range(len(self.inputFieldPrototype.data.shape) - 2):
+			if self.inputFieldPrototype.shape[i] == 1:
+				parallelDim = i
+				fieldTensorShape = fieldTensorShape + [numParallelColumns] + list(self.inputFieldPrototype.data.shape[(parallelDim+1):])
+				break
+			else:
+				fieldTensorShape = fieldTensorShape + [self.inputFieldPrototype.shape[i]]
+				if (i == (len(self.inputFieldPrototype.data.shape) - 2 - 1)):
+					fieldTensorShape = fieldTensorShape + list(self.inputFieldPrototype.data.shape[-2:])
+
+		if (parallelDim != -1):
+			columnStep = numParallelColumns
+		else:
+			columnStep = 1
+
+		if (numParallelColumns > 1) and (parallelDim == -1):
+			warnings.warn("Specified more than one column to be computed in parallel but was unable to find an available dimension on the tensor.")
+
+		fieldTensor = torch.tensor(torch.zeros(fieldTensorShape), device=self.inputFieldPrototype.data.device)
+		field = copy.deepcopy(self.inputFieldPrototype)
+		field.data = fieldTensor
+
+		for i in range(0, len(heightInds), columnStep):
+			print("Columns processed: " + str(i) + "/" + str(len(heightInds)))
+
+			field.data[... , :, :] = 0
+			if (parallelDim != -1):
+				tempDataTensorShape = fieldTensorShape.copy()
+				tempDataTensorShape[0:-2] = 1
+				tempDataTensorShape[parallelDim] = columnStep
+				tempDataTensor = torch.zeros(tempDataTensorShape)
+				tempIndexingArray = [0] * len(fieldTensorShape)
+				for j in range(columnStep):
+					tempIndexingArray[parallelDim] = j
+					tempIndexingArray[-2:-1] = [heightInds[i+j], widthInds[i+j]]
+					tempDataTensor[tempIndexingArray] = 1
+				field.data[...] = tempDataTensor
+			else:
+				field.data[... , heightInds[i], widthInds[i]] = 1
+
+			fieldOut = self.model(field)
+			tempPts = fieldOut.data[... , self.inputBoolMask]
+
+			if (parallelDim != -1):
+				tempShape = fieldTensorShape.copy()
+				tempShape[parallelDim] = 1
+				columnsTemp = torch.tensor(tempShape[0:-2] + [matrixOutputDimension, columnStep])
+				for j in range(columnStep):
+					# columnsTemp[..., :, j] = 
+			else:
+				columnTemp = tempPts.reshape(fieldTensorShape[0:-2] + [matrixOutputDimension])
+				H_mtx[... , :, i] = columnTemp
+
+
+		# for i in range(len(heightInds)):
+		# 	print("Columns processed: " + str(i) + "/" + str(len(heightInds)))
+
+		# 	field.data[... , :, :] = 0
+		# 	field.data[... , heightInds[i], widthInds[i]] = 1
+		# 	fieldOut = self.model(field)
+
+		# 	tempPts = fieldOut.data[... , self.sampleBoolMask]
+		# 	columnTemp = tempPts.reshape(-1,len(heightInds))
+
+		# 	H_mtx[... , :, i] = columnTemp
+
+		self.H_mtx = H_mtx
+		return H_mtx
+
+
+	@classmethod
+	def getUniformSampleBoolMask(cls, height, width, nx, ny):
+		if (nx > height) or (ny > width):
+			raise Exception("Invalid arguments.  'nx' must be less than 'height' and 'ny' must be less than 'width'.")
+		boolMask = torch.zeros(height, width) != 0	# Initializes everything to False
+		if (height == 0) or (width == 0) or (nx == 0) or (ny == 0):
+			return boolMask
+		if (nx == 1):
+			xStep = 1
+			xUpper = 1
+		else:
+			xStep = np.maximum((height-1)//(nx-1), 1)
+			xUpper = ((nx - 1) * xStep) + 1
+		if (ny == 1):
+			yStep = 1
+			yUpper = 1
+		else:
+			yStep = np.maximum((width-1)//(ny-1), 1)
+			yUpper = ((ny - 1) * yStep) + 1
+		boolMask[0:xUpper:xStep, 0:yUpper:yStep] = True
+		return boolMask
