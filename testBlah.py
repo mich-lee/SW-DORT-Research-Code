@@ -38,7 +38,7 @@ from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 
-from holotorch.utils.Field_Utils import get_field_slice
+from holotorch.utils.Field_Utils import get_field_slice, applyFilterSpaceDomain
 
 warnings.filterwarnings('always',category=UserWarning)
 
@@ -143,19 +143,24 @@ model = torch.nn.Sequential(fieldInputPadder, lensSys1, scattererModel, lensSys1
 
 ################################################################################################################################
 
+inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 36, 64)
+outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 60, 80)
 
-if True:
+################################################################################################################################
+
+if False:
 	# model2 = testModel()	#torch.nn.Identity()
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
-													inputBoolMask=TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 36, 64),
-													outputBoolMask=TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 60, 80),
+													inputBoolMask=inputBoolMask,
+													outputBoolMask=outputBoolMask,
 													# inputBoolMask=TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 8, 8),
 													# outputBoolMask=TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 8, 8),
 													model=model,
 													numParallelColumns=8)
 	asdf = transferMtxMeasurer.measureTransferMatrix()
 elif False:
-	H = torch.load('H_mtx_202210192329.pt', map_location=device)
+	# H = torch.load('H_mtx_202210192329.pt', map_location=device)
+	H = torch.load('H_mtx_202210201534.pt', map_location=device)
 	U, S, Vh = torch.linalg.svd(H)
 	V = Vh.conj().transpose(-2, -1)
 
@@ -207,3 +212,22 @@ plt.title("After Propagation")
 
 
 pass
+
+
+
+# tempSingVecInd = 100
+# fieldIn.data[...] = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device) + 0j
+# fieldIn.data[...,inputBoolMask] = V[0,0,0,0,:,tempSingVecInd]
+# aaa = torch.zeros(fieldIn.data.shape[-2:], device=device)
+# # aaa[270,480] = 1
+# # aaa[263:278,473:488]
+# aaa[263:278,473:488] = (-torch.tensor(range(-7,8)).abs() - torch.tensor([list(range(-7,8))]).abs().transpose(-2,-1)) + 14
+# fieldIn.data[...,:,:] = applyFilterSpaceDomain(aaa, fieldIn.data[...,:,:])
+# # fieldIn.data = fieldIn.data * S[... , tempSingVecInd]
+# temp2 = lensSys1(fieldIn)
+# plt.clf()
+# plt.subplot(1,2,1)
+# fieldIn.visualize(flag_axis=True)
+# plt.subplot(1,2,2)
+# temp2.visualize(flag_axis=True)
+# # scattererModel(temp2).visualize(flag_axis=True)
