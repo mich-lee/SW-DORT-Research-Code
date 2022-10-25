@@ -1,19 +1,11 @@
 import numpy as np
-import sys
 import torch
 import matplotlib.pyplot as plt
 
-# from turtle import clone
-
-# import pathlib
+import sys
 import copy
-
-from numpy import asarray
-# import gc	# For garbage collection/freeing up memory
-
-# Image wranglers
-# import imageio
-# from PIL import Image
+import datetime
+# import pathlib
 
 import warnings
 from ScattererModel import Scatterer, ScattererModel
@@ -109,9 +101,6 @@ fieldIn = ElectricField(data=fieldData, wavelengths=wavelengthContainer, spacing
 fieldIn.wavelengths.to(device=device)
 fieldIn.spacing.to(device=device)
 
-
-
-
 ################################################################################################################################
 
 fieldInputPadder = Field_Padder_Unpadder(pad_x = int(1.5*inputRes[0]), pad_y = int(1.5*inputRes[1]))
@@ -157,12 +146,34 @@ if False:
 													# outputBoolMask=TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 8, 8),
 													model=model,
 													numParallelColumns=8)
-	asdf = transferMtxMeasurer.measureTransferMatrix()
-elif False:
-	# H = torch.load('H_mtx_202210192329.pt', map_location=device)
-	H = torch.load('H_mtx_202210201534.pt', map_location=device)
-	U, S, Vh = torch.linalg.svd(H)
-	V = Vh.conj().transpose(-2, -1)
+	H_mtx = transferMtxMeasurer.measureTransferMatrix()
+
+	experimentSaveDict =	{
+								'Transfer_Matrix'				:	H_mtx,
+								'Model'							:	model,
+								'Scatterer_List'				:	scattererList,
+								'Field_Input_Prototype'			:	fieldIn,
+								'Input_Bool_Mask'				:	inputBoolMask,
+								'Output_Bool_Mask'				:	outputBoolMask,
+								'Transfer_Matrix_Processor'		:	transferMtxMeasurer,
+								'NOTE'							:	'I am not 100% sure if all the information/model/etc are correct here as the transfer matrix was saved about four days ago.'
+							}
+	
+	curDateTime = datetime.datetime.today()
+	experimentSaveFileStr = 'Experiment_' + str(curDateTime.year) + '-' + str(curDateTime.month) + '-' + str(curDateTime.day) + '_' + \
+							str(curDateTime.hour).zfill(2) + 'h' + str(curDateTime.minute).zfill(2) + 'm' + str(curDateTime.second).zfill(2) + 's.pt'
+	
+	while True:
+		resp = input("Save experiment data as " + experimentSaveFileStr + "? (y/n): ")
+		if (resp == 'y'):
+			print("Saved '" + experimentSaveFileStr + "' to current working directory.")
+			torch.save(experimentSaveDict, experimentSaveFileStr)
+			break
+		elif (resp == 'n'):
+			print("Exiting...")
+			break
+		else:
+			print("Invalid input.")
 
 
 
@@ -175,7 +186,7 @@ elif False:
 fieldInputPadder.add_output_hook()
 thinLens1.add_output_hook()
 asmProp1a.add_output_hook()
-asmProp1b.add_output_hook()
+# asmProp1b.add_output_hook()
 # thinLens2.add_output_hook()
 # asmProp2a.add_output_hook()
 # asmProp2b.add_output_hook()
@@ -186,25 +197,25 @@ plt.subplot(2,4,1)
 get_field_slice(fieldInputPadder.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("Padded Input")
 plt.subplot(2,4,2)
-get_field_slice(asmProp1a.outputs[-2], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+get_field_slice(asmProp1a.outputs[-4], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("After Propagation")
 plt.subplot(2,4,3)
 get_field_slice(thinLens1.outputs[-2], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("Lens Output")
 plt.subplot(2,4,4)
-get_field_slice(asmProp1b.outputs[-2], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+get_field_slice(asmProp1a.outputs[-3], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("After Propagation")
 plt.subplot(2,4,5)
 get_field_slice(scattererModel.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("After Scattering")
 plt.subplot(2,4,6)
-get_field_slice(asmProp1a.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+get_field_slice(asmProp1a.outputs[-2], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("After Propagation")
 plt.subplot(2,4,7)
 get_field_slice(thinLens1.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("Lens Output")
 plt.subplot(2,4,8)
-get_field_slice(asmProp1b.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+get_field_slice(asmProp1a.outputs[-1], channel_inds_range=0, field_data_tensor_dimension=Dimensions.BTPCHW).visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title("After Propagation")
 
 
