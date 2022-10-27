@@ -15,7 +15,8 @@ class TransferMatrixProcessor:
 					inputBoolMask : torch.tensor,
 					outputBoolMask : torch.tensor,
 					model : torch.nn.Module,
-					numParallelColumns: int = 8
+					numParallelColumns: int = 8,
+					useMacropixels : bool = True
 				):
 		self.inputBoolMask = inputBoolMask
 		self.outputBoolMask = outputBoolMask
@@ -24,6 +25,12 @@ class TransferMatrixProcessor:
 		self.H_mtx = torch.tensor([])
 		self._inputFieldShape = list(inputFieldPrototype.shape)
 		self.initializeTempField(inputFieldPrototype)
+
+		self.useMacropixels = useMacropixels
+		self.inputMacropixelResolution = [int((torch.sum(inputBoolMask, 1) > 0).sum()), int((torch.sum(inputBoolMask, 0) > 0).sum())]
+		self.outputMacropixelResolution = [int((torch.sum(outputBoolMask, 1) > 0).sum()), int((torch.sum(outputBoolMask, 0) > 0).sum())]
+		self.inputMacropixelSize = [inputBoolMask.shape[0] // self.inputMacropixelResolution[0], inputBoolMask.shape[1] // self.inputMacropixelResolution[1]]
+		self.outputMacropixelSize = [outputBoolMask.shape[0] // self.outputMacropixelResolution[0], outputBoolMask.shape[1] // self.outputMacropixelResolution[1]]
 
 	def initializeTempField(self, inputFieldPrototype : ElectricField):
 		numParallelColumns = self.numParallelColumns
@@ -43,16 +50,17 @@ class TransferMatrixProcessor:
 		if (parallelDim != -1):
 			columnStep = numParallelColumns
 		else:
-			columnStep = 1
+			# columnStep = 1
+			raise Exception("Could not find any available singleton dimensions to calculate responses in paralle.")
 
-		if (numParallelColumns > 1) and (parallelDim == -1):
-			warnings.warn("Specified more than one column to be computed in parallel but was unable to find an available dimension on the tensor.  Computing one column at a time.")
+		# if (numParallelColumns > 1) and (parallelDim == -1):
+		# 	warnings.warn("Specified more than one column to be computed in parallel but was unable to find an available dimension on the tensor.  Computing one column at a time.")
 		
 		self._fieldTensorShape = fieldTensorShape
 		self.parallelDim = parallelDim
 		self._columnStep = columnStep
 
-		tempFieldData = torch.zeros(fieldTensorShape, device=inputFieldPrototype.data.device)
+		tempFieldData = torch.zeros(fieldTensorShape, device=inputFieldPrototype.data.device) + 0j
 		tempWavelength = copy.deepcopy(inputFieldPrototype.wavelengths)
 		tempSpacing = copy.deepcopy(inputFieldPrototype.spacing)
 		self._tempField = ElectricField(data = tempFieldData, wavelengths=tempWavelength, spacing=tempSpacing)
@@ -72,13 +80,6 @@ class TransferMatrixProcessor:
 
 		H_mtx = torch.zeros(list(self._inputFieldShape[0:-2]) + [matrixOutputLen, matrixInputLen], device=self._tempField.data.device) + 0j
 
-		# if (numParallelColumns > 1):
-		# 	doParallel = True
-		# else:
-		# 	doParallel = False
-
-		# if (doParallel) and (self.inputFieldPrototype.shape[0] >)
-
 		t0 = time.time()
 		t_last = t0
 		times = []
@@ -95,65 +96,34 @@ class TransferMatrixProcessor:
 				rate = (len(t_n) * columnStep) / sum(t_n)
 				est_time_completion = (matrixInputLen - i) / rate
 				print("%02d:%02d:%02d" % (int(est_time_completion // 3600), int((est_time_completion % 3600) // 60), int(est_time_completion % 60)))
-				
-			#ETC: %.3f%s" % (t1 - t0, est_time_completion, tempUnitStr))
 
 			self._tempField.data[... , :, :] = 0
-			if (parallelDim != -1):
-				# tempDataTensorShape = fieldTensorShape.copy()
-				# tempDataTensorShape[0:-2] = [1] * (len(tempDataTensorShape) - 2)
-				# tempDataTensorShape[parallelDim] = columnStep
 
-				# tempIndexingArray = [0] * len(fieldTensorShape)
-				# for j in range(min(columnStep, matrixInputLen - i)):
-				# 	tempIndexingArray[parallelDim] = j
-				# 	tempIndexingArray[-2:] = [int(heightInds[i+j]), int(widthInds[i+j])]
-				# 	tempIndexingArray = tempIndexingArray
-				# 	tempDataTensor[tuple(tempIndexingArray)] = 1
-				# self._tempField.data[...] = tempDataTensor
+			tempViewPermuteInds = list(range(len(fieldTensorShape) - 2))
+			del tempViewPermuteInds[parallelDim]
+			tempViewPermuteInds = tempViewPermuteInds + [parallelDim] + list(range((len(fieldTensorShape) - 2), len(fieldTensorShape)))
+			tempDataTensor = torch.permute(self._tempField.data, tempViewPermuteInds)
 
-				tempViewPermuteInds = list(range(len(fieldTensorShape) - 2))
-				del tempViewPermuteInds[parallelDim]
-				tempViewPermuteInds = tempViewPermuteInds + [parallelDim] + list(range((len(fieldTensorShape) - 2), len(fieldTensorShape)))
-				tempDataTensor = torch.permute(self._tempField.data, tempViewPermuteInds)
-
-				for j in range(min(columnStep, matrixInputLen - i)):
-					# 'tempDataTensor' is a view of self._tempField.data so modifying 'tempDataTensor' will modify self._tempField.data
+			for j in range(min(columnStep, matrixInputLen - i)):
+				# 'tempDataTensor' is a view of self._tempField.data so modifying 'tempDataTensor' will modify self._tempField.data
+				if (self.useMacropixels):
+					startIndHeight = int(heightInds[i+j] - np.ceil(self.inputMacropixelSize[0] / 2) + 1)
+					endIndHeight = int(heightInds[i+j] + np.floor(self.inputMacropixelSize[0] / 2))
+					startIndWidth = int(widthInds[i+j] - np.ceil(self.inputMacropixelSize[1] / 2) + 1)
+					endIndWidth = int(widthInds[i+j] + np.floor(self.inputMacropixelSize[1] / 2))
+					tempDataTensor[... , j, startIndHeight:(endIndHeight+1), startIndWidth:(endIndWidth+1)] = 1
+				else:
 					tempDataTensor[... , j, int(heightInds[i+j]), int(widthInds[i+j])] = 1
-			else:
-				self._tempField.data[... , heightInds[i], widthInds[i]] = 1
 
 			fieldOut = self.model(self._tempField)
 			tempPts = fieldOut.data[... , self.outputBoolMask]
 
-			if (parallelDim != -1):
-				# tempShape = fieldTensorShape.copy()
-				# tempShape[parallelDim] = 1
-				# columnsTemp = torch.tensor(tempShape[0:-2] + [matrixOutputDimension, columnStep])
-				tempPermuteInds = list(range(len(tempPts.shape)))
-				del tempPermuteInds[parallelDim]
-				tempPermuteInds = tempPermuteInds + [parallelDim]
-				columnsTemp = torch.unsqueeze(torch.permute(tempPts, tempPermuteInds), parallelDim)
-				numColsTemp = min(columnStep, H_mtx.shape[-1] - i)
-				H_mtx[..., :, i:(i+numColsTemp)] = columnsTemp[..., 0:numColsTemp]
-			else:
-				# Should be difficult to get to this point
-				# Might want to test this case specifically
-				columnTemp = tempPts.reshape(fieldTensorShape[0:-2] + [matrixOutputLen])
-				H_mtx[... , :, i] = columnTemp
-
-
-		# for i in range(len(heightInds)):
-		# 	print("Columns processed: " + str(i) + "/" + str(len(heightInds)))
-
-		# 	field.data[... , :, :] = 0
-		# 	field.data[... , heightInds[i], widthInds[i]] = 1
-		# 	fieldOut = self.model(field)
-
-		# 	tempPts = fieldOut.data[... , self.sampleBoolMask]
-		# 	columnTemp = tempPts.reshape(-1,len(heightInds))
-
-		# 	H_mtx[... , :, i] = columnTemp
+			tempPermuteInds = list(range(len(tempPts.shape)))
+			del tempPermuteInds[parallelDim]
+			tempPermuteInds = tempPermuteInds + [parallelDim]
+			columnsTemp = torch.unsqueeze(torch.permute(tempPts, tempPermuteInds), parallelDim)
+			numColsTemp = min(columnStep, H_mtx.shape[-1] - i)
+			H_mtx[..., :, i:(i+numColsTemp)] = columnsTemp[..., 0:numColsTemp]
 
 		self.H_mtx = H_mtx
 		return H_mtx
