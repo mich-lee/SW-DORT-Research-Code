@@ -85,18 +85,19 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 ################################################################################################################################
 
-loadedData = torch.load('Experiment_202210201534.pt', map_location=device)
+# loadedData = torch.load('Experiment_202210201534.pt', map_location=device)
 # loadedData = torch.load('Experiment_202210192329.pt', map_location=device)
+loadedData = torch.load('Experiment_2022-10-27_19h14m38s.pt', map_location=device)
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
 V = Vh.conj().transpose(-2, -1)
 
 model = loadedData['Model']
-fieldInputPadder = model[0]
-thinLens1 = model[1][1]
-# asmProp1a = model[1][0]
-asmProp1a = ASM_Prop(init_distance=model[1][0]._z)
-scattererModel = model[2]
+# fieldInputPadder = model[0]
+# thinLens1 = model[1][1]
+# # asmProp1a = model[1][0]
+# asmProp1a = ASM_Prop(init_distance=model[1][0]._z)
+# scattererModel = model[2]
 
 fieldIn = copy.deepcopy(loadedData['Field_Input_Prototype'])
 fieldIn.data[...] = 0
@@ -107,13 +108,19 @@ outputBoolMask = loadedData['Output_Bool_Mask']
 q = torch.matmul(Vh[0,0,0,1,:,:], V[0,0,0,0,:,:])
 w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 
-v1 = V[0,0,0,0,:,288]
-v2 = V[0,0,0,1,:,287]
+v1 = V[0,0,0,0,:,0]
+v2 = V[0,0,0,1,:,0]
 
-m1 = torch.nn.Sequential(fieldInputPadder, asmProp1a, thinLens1)
+# tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
+m1 = torch.nn.Sequential(model[0], model[1], model[2])
 
+fieldIn.data[...] = 0
 fieldIn.data[0,0,0,0,inputBoolMask] = v1
 fieldIn.data[0,0,0,1,inputBoolMask] = v2
+
+macropixelShape = torch.zeros(fieldIn.data.shape[-2:], device=device)
+macropixelShape[253:261,253:261] = 1
+fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
 
 o1 = m1(fieldIn)
 
@@ -148,3 +155,14 @@ pass
 # plt.subplot(1,2,2)
 # temp2.visualize(flag_axis=True)
 # # scattererModel(temp2).visualize(flag_axis=True)
+
+
+# tempSingVecInd = 0
+# fieldIn.data[...] = 0
+# fieldIn.data[...,inputBoolMask] = V[0,0,0,0,:,tempSingVecInd]
+# aaa = torch.zeros(fieldIn.data.shape[-2:], device=device)
+# aaa[253:261,253:261] = 1
+# fieldIn.data[...,:,:] = applyFilterSpaceDomain(aaa, fieldIn.data[...,:,:])
+# plt.clf()
+# get_field_slice(fieldIn, channel_inds_range=0).visualize(flag_axis=True)
+# plt.clim(0,1e-2)

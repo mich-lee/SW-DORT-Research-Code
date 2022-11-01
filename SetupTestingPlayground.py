@@ -24,6 +24,7 @@ from holotorch.Spectra.WavelengthContainer import WavelengthContainer
 from holotorch.Spectra.SpacingContainer import SpacingContainer
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
 from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
+from holotorch.Optical_Propagators.ASM_Prop_Legacy import ASM_Prop_Legacy
 # from holotorch.Sensors.Detector import Detector
 from holotorch.Optical_Components.FT_Lens import FT_Lens
 from holotorch.Optical_Components.Thin_Lens import Thin_Lens
@@ -34,30 +35,6 @@ from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 from holotorch.utils.Field_Utils import get_field_slice, applyFilterSpaceDomain
 from MiscHelperFunctions import addSequentialModelOutputHooks, getSequentialModelOutputSequence
 
-################################################################################################################################
-
-from holotorch.Optical_Components.CGH_Component import CGH_Component
-class testModel(CGH_Component):
-	def __init__(self):
-		super().__init__()
-		self.initializedFlag = False
-
-	def initializeOutput(self, field):
-		data = torch.zeros(list(field.data.shape[0:-2]) + [1, field.data.shape[-1]*field.data.shape[-2]], device=field.data.device)
-		data[..., :] = torch.tensor(range(data.shape[-1]))
-		data = data.view(list(data.shape[0:-2]) + [field.data.shape[-2], field.data.shape[-1]])
-		self.output = data
-
-	def forward(self, field : ElectricField) -> ElectricField:
-		if not self.initializedFlag:
-			self.initializeOutput(field)
-			self.initializedFlag = True
-		elif (field.data.shape != self.output.shape):
-			self.initializeOutput(field)
-
-		data = self.output * field.data
-		out = ElectricField(data=data, wavelengths=field.wavelengths, spacing=field.spacing)
-		return out
 
 ################################################################################################################################
 
@@ -74,10 +51,10 @@ syntheticWavelength = 0.1*mm
 lambda1 = 854*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
-# wavelengths = [lambda1, lambda2]
-wavelengths = [lambda1]
+wavelengths = [lambda1, lambda2]
+# wavelengths = [lambda1]
 inputSpacing = 6.4*um
-inputRes = (1024, 1024)
+inputRes = (512, 512)
 outputRes = (3036, 4024)
 outputSpacing = 1.85*um
 
@@ -97,14 +74,15 @@ spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-# fieldData[... , 0:16, 0:16] = 1
+fieldData[... , 0:16, 0:16] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
-fieldData[...,:,:] = 1
+# fieldData[...,:,:] = 1
 # fieldData[...,0,0] = 1
 # fieldData[...,-1,0] = 1
 # fieldData[...,0,-1] = 1
 # fieldData[...,-1,-1] = 1
 # fieldData[...,:,:] = torch.exp(1j*10*(2*np.pi/res[0])*torch.tensor(range(res[0])).repeat([res[1],1]))
+# fieldData = torch.rand(fieldData.shape, device=device)
 fieldData = fieldData + 0j
 
 fieldIn = ElectricField(data=fieldData, wavelengths=wavelengthContainer, spacing=spacingContainer)
@@ -149,7 +127,7 @@ outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], 
 
 ################################################################################################################################
 
-if False:
+if True:
 	# model2 = testModel()	#torch.nn.Identity()
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
 													inputBoolMask=inputBoolMask,
