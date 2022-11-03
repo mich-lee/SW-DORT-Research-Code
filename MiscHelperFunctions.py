@@ -64,3 +64,56 @@ def getSequentialModelOutputSequence(model : torch.nn.Sequential):
 	outputs.reverse()
 
 	return outputs
+
+
+def plotModelOutputSequence(outputs : list,
+							inputField : ElectricField = None,
+							maxNumColsPerFigure = 4,
+							batch_inds_range : int = None,
+							time_inds_range : int = None,
+							pupil_inds_range : int = None,
+							channel_inds_range : int = None,
+							height_inds_range : int = None,
+							width_inds_range : int = None,
+							figureStartNumber : int = 1,
+							flag_colorbar: bool = True,
+							flag_axis: bool = True,
+							rescale_factor : float = 1,
+							plot_xlims : tuple = None,
+							plot_ylims : tuple = None,
+						):
+	if (inputField is not None):
+		fields = [1] * (len(outputs) + 1)
+		fields[0] = inputField
+		fields[1:] = outputs
+	else:
+		fields = outputs
+
+	numCols = np.minimum(len(fields), maxNumColsPerFigure)
+	for i in range(len(fields)):
+		curSubplotColInd = (i % numCols) + 1
+		if curSubplotColInd == 1:
+			plt.figure((i // numCols) + figureStartNumber)
+			plt.clf()
+		tempOutput = get_field_slice(fields[i], batch_inds_range=batch_inds_range, time_inds_range=time_inds_range, pupil_inds_range=pupil_inds_range,
+										channel_inds_range=channel_inds_range, height_inds_range=height_inds_range, width_inds_range=width_inds_range)
+		if ((i == 0) and (inputField is not None)):
+			titleStr = "Input Field"
+		else:
+			if (inputField is not None):
+				outputNumStr = str(i)
+			else:
+				outputNumStr = str(i + 1)
+			titleStr = "Output " + outputNumStr
+		plt.subplot(2, numCols, curSubplotColInd)
+		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.MAGNITUDE, title=titleStr+" (Magnitude)", rescale_factor=rescale_factor, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
+		if plot_xlims is not None:
+			plt.xlim(plot_xlims)
+		if plot_ylims is not None:
+			plt.ylim(plot_ylims)
+		plt.subplot(2, numCols, curSubplotColInd + numCols)
+		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.PHASE, title=titleStr+" (Phase)", rescale_factor=rescale_factor, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
+		if plot_xlims is not None:
+			plt.xlim(plot_xlims)
+		if plot_ylims is not None:
+			plt.ylim(plot_ylims)

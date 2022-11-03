@@ -79,6 +79,7 @@ class ScattererModel(CGH_Component):
 											mask_forward_type=MASK_FORWARD_TYPE.MULTIPLICATIVE,
 											mask_opt=False
 										)
+		self.scatterer_mask.mask = self.scatterer_mask.mask.to(field.data.device)
 
 		for s in self.scatterers:
 			x = s.location_x
