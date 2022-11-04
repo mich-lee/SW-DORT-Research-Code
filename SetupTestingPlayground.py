@@ -30,10 +30,11 @@ from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 # from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
+from holotorch.Miscellaneous_Components.Memory_Reclaimer import Memory_Reclaimer
 
 from holotorch.utils.Helper_Functions import applyFilterSpaceDomain
 from holotorch.utils.Field_Utils import get_field_slice
-from MiscHelperFunctions import addSequentialModelOutputHooks, getSequentialModelOutputSequence, plotModelOutputSequence
+from MiscHelperFunctions import getSequentialModelComponentSequence, addSequentialModelOutputHooks, getSequentialModelOutputSequence, plotModelOutputSequence
 
 import holotorch.utils.Memory_Utils as Memory_Utils
 
@@ -45,7 +46,7 @@ use_cuda = True
 gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
-Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.7, ALLOC_TO_RESERVED_RATIO_CLEAR_CACHE_THRESHOLD_INIT=0.8)
+Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RESERVED_RATIO_CLEAR_CACHE_THRESHOLD_INIT=0.8)
 
 
 ################################################################################################################################
@@ -83,9 +84,9 @@ spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-fieldData[... , 0:4, 0:4] = 1
+# fieldData[... , 0:4, 0:4] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
-# fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
+fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
 # fieldData[...,:,:] = 1
 # fieldData[...,0,0] = 1
 # fieldData[...,-1,0] = 1
@@ -103,38 +104,40 @@ fieldIn.spacing.to(device=device)
 ################################################################################################################################
 
 
-scattererList = [
-					# Scatterer(location_x=0, location_y=0.065*mm, diameter=0.015*mm, scatteringResponse=1),
-					# Scatterer(location_x=0.2*mm, location_y=0.2*mm, diameter=0.015*mm, scatteringResponse=1),
-					# Scatterer(location_x=0, location_y=0.07*mm, diameter=0.015*mm, scatteringResponse=1),
-					# Scatterer(location_x=0*mm, location_y=0*mm, diameter=0.3*mm, scatteringResponse=1),
-					# Scatterer(location_x=0.75*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
-					# Scatterer(location_x=-1*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
-					Scatterer(location_x=1.575*mm, location_y=1.575*mm, diameter=0.1*mm, scatteringResponse=1),
-				]
+# scattererList = [
+# 					# Scatterer(location_x=0, location_y=0.065*mm, diameter=0.015*mm, scatteringResponse=1),
+# 					# Scatterer(location_x=0.2*mm, location_y=0.2*mm, diameter=0.015*mm, scatteringResponse=1),
+# 					# Scatterer(location_x=0, location_y=0.07*mm, diameter=0.015*mm, scatteringResponse=1),
+# 					# Scatterer(location_x=0*mm, location_y=0*mm, diameter=0.3*mm, scatteringResponse=1),
+# 					# Scatterer(location_x=0.75*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
+# 					# Scatterer(location_x=-1*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
+# 					Scatterer(location_x=1.605*mm, location_y=1.605*mm, diameter=0.1*mm, scatteringResponse=1),
+# 				]
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=12.5*mm)
-asmProp2 = ASM_Prop(init_distance=25*mm)
-asmProp3 = ASM_Prop(init_distance=50*mm)
-thinLens = Thin_Lens(focal_length=25*mm)
-scattererModel = ScattererModel(scattererList)
-outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
-model = torch.nn.Sequential	(
-								inputResampler,
-								asmProp1,
-								thinLens,
-								asmProp2,
-								thinLens,
-								asmProp3,
-								scattererModel,
-								asmProp3,
-								thinLens,
-								asmProp2,
-								thinLens,
-								asmProp1,
-								outputResampler
-							)
+# asmProp1 = ASM_Prop(init_distance=12.5*mm)
+# asmProp2 = ASM_Prop(init_distance=25*mm)
+# asmProp3 = ASM_Prop(init_distance=50*mm)
+# thinLens = Thin_Lens(focal_length=25*mm)
+# scattererModel = ScattererModel(scattererList)
+# memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True)
+# outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								memoryReclaimer,
+# 								asmProp1,
+# 								thinLens,
+# 								asmProp2,
+# 								thinLens,
+# 								asmProp3,
+# 								scattererModel,
+# 								asmProp3,
+# 								thinLens,
+# 								asmProp2,
+# 								thinLens,
+# 								asmProp1,
+# 								outputResampler
+# 							)
 
 
 ################################################################################################################################
@@ -183,17 +186,19 @@ if False:
 ################################################################################################################################
 
 
-# model = WavefrontAberrator(0.1*mm, 2*np.pi*(1/inputSpacing)*0.2, 4, inputRes, [inputSpacing, inputSpacing], device=device).model
+model = WavefrontAberrator(0.1*mm, 2*np.pi*(1/intermediateSpacing)*100, 4, intermediateRes, [intermediateSpacing, intermediateSpacing], device=device).model
+model = torch.nn.Sequential(inputResampler, model, ASM_Prop(init_distance=25*mm))
 
 
 ################################################################################################################################
 
 
-addSequentialModelOutputHooks(model)
+modelComponentSequence = getSequentialModelComponentSequence(model=model, recursive=True)
+addSequentialModelOutputHooks(model=model, recursive=True)
 fieldOut = model(fieldIn)
-outputs = getSequentialModelOutputSequence(model)
+outputs = getSequentialModelOutputSequence(model=model, recursive=True)
 
-# plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-100,100), plot_ylims=(-100,100))
-plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0)
+plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-0.075,0.075), plot_ylims=(-0.075,0.075))
+# plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0)
 
 pass

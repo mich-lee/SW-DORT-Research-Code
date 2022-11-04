@@ -97,9 +97,9 @@ class WavefrontAberrator(CGH_Component):
 								mask_forward_type=MASK_FORWARD_TYPE.MULTIPLICATIVE,
 								mask_opt=False
 							)
-		phaseMask = 2 * np.pi * torch.rand(screen.mask.shape, device=self.device)
+		phaseMask = 2 * np.pi * torch.rand(screen.mask.shape, dtype=torch.float, device=self.device)
 		H = WavefrontAberrator._generateGaussianInFreq(sigma, self._Kx, self._Ky).to(device=self.device)
-		h = ift2(H, norm='forward')
-		phaseMask = applyFilterSpaceDomain(h, phaseMask)
+		h = ift2(H, norm='backward').real
+		phaseMask = applyFilterSpaceDomain(h, phaseMask).real
 		screen.mask = torch.exp(1j*phaseMask).to(device=self.device)
 		return screen

@@ -1,13 +1,9 @@
 from numbers import Number
 from typing import Union
 import warnings
-import sys
 
 import torch
 import matplotlib.pyplot as plt
-
-sys.path.append("holotorch-lib/")
-sys.path.append("holotorch-lib/holotorch")
 
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
 from holotorch.Optical_Components.CGH_Component import CGH_Component
