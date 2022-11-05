@@ -16,11 +16,27 @@ from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
 
 class WavefrontAberrator(CGH_Component):
 	def __init__(	self,
+					model : torch.nn.Module,
+					direction_label : str = '',
+					parameterDict : dict = None
+				) -> None:
+		super().__init__()
+		self.model = model
+		self.direction_label = direction_label
+		self.parameterDict = parameterDict
+
+	def forward(self, field : ElectricField) -> ElectricField:
+		return self.model(field)
+
+
+class WavefrontAberratorGenerator:
+	def __init__(	self,
 					meanFreePath	: float,
 					screenSigma		: float,
 					numLayers		: float,
 					resolution		: list or tuple,
 					elementSpacings : list or tuple,
+					reusePropagator	: bool = True,
 					device			: torch.device = None,
 					gpu_no			: int = 0,
 					use_cuda		: bool = False
@@ -38,8 +54,6 @@ class WavefrontAberrator(CGH_Component):
 			raise Exception("'resolution' must be a tuple or list with two positive integer elements.")
 		if (not validate2TupleList(elementSpacings)):
 			raise Exception("'elementSpacings' must be a tuple or list with two positive real number elements.")
-			
-		super().__init__()
 
 		if (device != None):
 			self.device = device
@@ -53,21 +67,49 @@ class WavefrontAberrator(CGH_Component):
 		self.numLayers = numLayers
 		self.resolution = resolution
 		self.elementSpacings = elementSpacings
+		self._reusePropagator = reusePropagator
+
+		# This dictionary will be passed to the WavefrontAberrator components that this
+		# WavefrontAberratorGenerator object creates.  That way, the generated WavefrontAberrator
+		# objects---which, unlike this object, may be included in saved models---will still contain
+		# information about the parameters.
+		self._parameterDict =	{
+									'meanFreePath'		: meanFreePath,
+									'screenSigma'		: screenSigma,
+									'numLayers'			: numLayers,
+									'resolution'		: resolution,
+									'elementSpacings'	: elementSpacings,
+									'reusePropagator'	: reusePropagator,
+									'device'			: device,
+									'gpu_no'			: gpu_no,
+									'use_cuda'			: use_cuda
+								}
 
 		self._initializeModel()
-
 
 	def _initializeModel(self):
 		self._initializeFrequencyGrids()
 
+		if (self._reusePropagator):
+			prop = ASM_Prop(init_distance=self.meanFreePath)
+
 		model = torch.nn.Sequential()
 		for i in range(self.numLayers):
 			model.append(self._generatePhaseScreen(self.screenSigma))
-			model.append(ASM_Prop(init_distance=self.meanFreePath))
+			if (self._reusePropagator):
+				model.append(prop)
+			else:
+				model.append(ASM_Prop(init_distance=self.meanFreePath))
 		model.append(self._generatePhaseScreen(self.screenSigma))
 
-		self.model = model
+		modelReversed = torch.nn.Sequential()
+		for i in range(len(model) - 1, -1, -1):
+			modelReversed.append(model[i])
 
+		self._modelSequential = model
+		self._modelReversedSequential = modelReversed
+		self.model = WavefrontAberrator(model=model, direction_label='normal', parameterDict=self._parameterDict)
+		self.modelReversed = WavefrontAberrator(model=modelReversed, direction_label='reverse', parameterDict=self._parameterDict)
 
 	def _initializeFrequencyGrids(self):
 		def create_normalized_grid(H, W, device):
@@ -82,12 +124,10 @@ class WavefrontAberrator(CGH_Component):
 		self._Kx = 2*np.pi * self._Kx / self.elementSpacings[0]
 		self._Ky = 2*np.pi * self._Ky / self.elementSpacings[1]
 
-
 	@classmethod
 	def _generateGaussianInFreq(cls, sigma, Kx, Ky):
 		K_transverse = torch.sqrt(Kx**2 + Ky**2)
 		return torch.exp((-1/2)*(K_transverse**2)/(sigma**2))
-
 
 	def _generatePhaseScreen(self, sigma):
 		screen = SimpleMask(
@@ -98,8 +138,14 @@ class WavefrontAberrator(CGH_Component):
 								mask_opt=False
 							)
 		phaseMask = 2 * np.pi * torch.rand(screen.mask.shape, dtype=torch.float, device=self.device)
-		H = WavefrontAberrator._generateGaussianInFreq(sigma, self._Kx, self._Ky).to(device=self.device)
+		H = WavefrontAberratorGenerator._generateGaussianInFreq(sigma, self._Kx, self._Ky).to(device=self.device)
 		h = ift2(H, norm='backward').real
 		phaseMask = applyFilterSpaceDomain(h, phaseMask).real
 		screen.mask = torch.exp(1j*phaseMask).to(device=self.device)
 		return screen
+
+	def get_model(self):
+		return self.model
+
+	def get_model_reversed(self):
+		return self.modelReversed
