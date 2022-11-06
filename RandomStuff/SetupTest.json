@@ -1,0 +1,200 @@
+{
+  "version": 2,
+  "objs": [
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": -40.96,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 0,
+        "y": -242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": 40.96,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 0,
+        "y": 242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": -242.88,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 10000,
+        "y": -242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": 242.88,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 10000,
+        "y": 242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "lens",
+      "p1": {
+        "type": 1,
+        "x": 625,
+        "y": 242.88,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 625,
+        "y": -242.88,
+        "exist": true
+      },
+      "p": "1250"
+    },
+    {
+      "type": "lens",
+      "p1": {
+        "type": 1,
+        "x": 1875,
+        "y": 242.88,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 1875,
+        "y": -242.88,
+        "exist": true
+      },
+      "p": "1250"
+    },
+    {
+      "type": "ruler",
+      "p1": {
+        "type": 1,
+        "x": 4375,
+        "y": 0,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 4375,
+        "y": -242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": -40.96,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": -100,
+        "y": -40.96,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": -100,
+        "y": 40.96,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 0,
+        "y": 40.96,
+        "exist": true
+      }
+    },
+    {
+      "type": "led",
+      "p1": {
+        "type": 1,
+        "x": 0,
+        "y": -20,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 140,
+        "y": -20,
+        "exist": true
+      },
+      "p": "15.32",
+      "symmetric": true,
+      "brightness": 1
+    },
+    {
+      "type": "ruler",
+      "p1": {
+        "type": 1,
+        "x": 4375,
+        "y": 0,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": 4375,
+        "y": 242.88,
+        "exist": true
+      }
+    },
+    {
+      "type": "blackline",
+      "p1": {
+        "type": 1,
+        "x": -100,
+        "y": 40.96,
+        "exist": true
+      },
+      "p2": {
+        "type": 1,
+        "x": -100,
+        "y": -40.96,
+        "exist": true
+      }
+    }
+  ],
+  "mode": "light",
+  "rayDensity_light": 2.2454366473769354,
+  "rayDensity_images": 1,
+  "observer": null,
+  "origin": {
+    "x": 392.99999999999994,
+    "y": 417
+  },
+  "scale": 0.5,
+  "colorMode": false
+}

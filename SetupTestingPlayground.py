@@ -63,7 +63,7 @@ inputRes = (256, 256)
 inputSpacing = 6.4*um
 
 intermediateRes = (3036, 3036)	# (int(8*inputRes[0]), int(8*inputRes[0]))
-intermediateSpacing = inputSpacing / 2
+intermediateSpacing = inputSpacing
 
 outputRes = (3036, 4024)
 outputSpacing = 1.85*um
@@ -84,7 +84,7 @@ spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-fieldData[... , 0:8, 0:8] = 1
+fieldData[... , 0:4, 0:4] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
 # fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
 # fieldData[...,:,:] = 1
@@ -126,15 +126,15 @@ wavefrontAberrator = wavefrontAberratorGen.get_model()
 wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=12.5*mm)
-asmProp2 = ASM_Prop(init_distance=25*mm)
-
-thinLens = Thin_Lens(focal_length=25*mm)
+asmProp1 = ASM_Prop(init_distance=37.5*mm)
+asmProp2 = ASM_Prop(init_distance=75*mm)
+# asmProp3 = ASM_Prop(init_distance=50*mm)
+asmProp3 = ASM_Prop(init_distance=((150-0.4)/2)*mm)
+thinLens = Thin_Lens(focal_length=75*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-asmProp3 = ASM_Prop(init_distance=((50-0.4)/2)*mm)
 model = torch.nn.Sequential	(
 								inputResampler,
 								memoryReclaimer,
@@ -156,7 +156,10 @@ model = torch.nn.Sequential	(
 								outputResampler
 							)
 
+# asmProp1 = ASM_Prop(init_distance=12.5*mm)
+# asmProp2 = ASM_Prop(init_distance=25*mm)
 # asmProp3 = ASM_Prop(init_distance=50*mm)
+# thinLens = Thin_Lens(focal_length=25*mm)
 # model = torch.nn.Sequential	(
 # 								inputResampler,
 # 								memoryReclaimer,
