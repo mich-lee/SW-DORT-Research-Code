@@ -41,6 +41,23 @@ import holotorch.utils.Memory_Utils as Memory_Utils
 
 ################################################################################################################################
 
+def printSimulationSize(sz : tuple, spacing : float or tuple, prefixStr : str = ''):
+	nx = sz[0]
+	ny = sz[1]
+	if (type(spacing) is tuple):
+		dx = spacing[0]
+		dy = spacing[1]
+	else:
+		dx = spacing
+		dy = spacing
+	lx_mm = nx * dx * 1e3
+	ly_mm = ny * dy * 1e3
+	dx_um = dx * 1e6
+	dy_um = dy * 1e6
+	print(prefixStr + "Simulation Size: %.3fx%.3f mm\t|\t(dx, dy): (%.3fum, %.3fum)" % (lx_mm, ly_mm, dx_um, dy_um))
+
+################################################################################################################################
+
 
 use_cuda = True
 gpu_no = 0
@@ -59,11 +76,11 @@ lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (256, 256)
+inputRes = (512, 512)
 inputSpacing = 6.4*um
 
 intermediateRes = (3036, 3036)	# (int(8*inputRes[0]), int(8*inputRes[0]))
-intermediateSpacing = inputSpacing
+intermediateSpacing = inputSpacing / 2
 
 outputRes = (3036, 4024)
 outputSpacing = 1.85*um
@@ -84,7 +101,7 @@ spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-fieldData[... , 0:4, 0:4] = 1
+fieldData[... , 0:8, 0:8] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
 # fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
 # fieldData[...,:,:] = 1
@@ -100,6 +117,10 @@ fieldIn = ElectricField(data=fieldData, wavelengths=wavelengthContainer, spacing
 fieldIn.wavelengths.to(device=device)
 fieldIn.spacing.to(device=device)
 
+printSimulationSize(inputRes, inputSpacing, 'Simulation Input\t|\t')
+printSimulationSize(intermediateRes, intermediateSpacing, 'Intermediate Calcs\t|\t')
+printSimulationSize(outputRes, outputSpacing, 'Simulation Output\t|\t')
+
 
 ################################################################################################################################
 
@@ -111,11 +132,11 @@ scattererList = [
 					# Scatterer(location_x=0*mm, location_y=0*mm, diameter=0.3*mm, scatteringResponse=1),
 					# Scatterer(location_x=0.75*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
 					# Scatterer(location_x=-1*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
-					Scatterer(location_x=1.605*mm, location_y=1.605*mm, diameter=0.1*mm, scatteringResponse=1),
+					Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
 				]
 
 wavefrontAberratorGen = WavefrontAberratorGenerator(	meanFreePath = 0.1*mm,
-														screenSigma = 2*np.pi*(1/intermediateSpacing)*100,
+														screenSigma = 2*np.pi*(1/intermediateSpacing)*0.5,
 														numLayers = 4,
 														resolution = intermediateRes,
 														elementSpacings = [intermediateSpacing, intermediateSpacing],
@@ -126,23 +147,24 @@ wavefrontAberrator = wavefrontAberratorGen.get_model()
 wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=37.5*mm)
-asmProp2 = ASM_Prop(init_distance=75*mm)
-# asmProp3 = ASM_Prop(init_distance=50*mm)
-asmProp3 = ASM_Prop(init_distance=((150-0.4)/2)*mm)
-thinLens = Thin_Lens(focal_length=75*mm)
+asmProp1 = ASM_Prop(init_distance=33.333333333333*mm)
+asmProp2 = ASM_Prop(init_distance=50*mm)
+# asmProp3 = ASM_Prop(init_distance=75*mm)
+asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm)
+thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
 model = torch.nn.Sequential	(
 								inputResampler,
-								memoryReclaimer,
+								# memoryReclaimer,
 								asmProp1,
 								thinLens,
 								asmProp2,
 								thinLens,
 								asmProp3,
+								memoryReclaimer,
 								wavefrontAberrator,
 								asmProp3,
 								scattererModel,
@@ -185,12 +207,12 @@ outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], 
 
 ################################################################################################################################
 
-if False:
+if True:
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
 													inputBoolMask=inputBoolMask,
 													outputBoolMask=outputBoolMask,
 													model=model,
-													numParallelColumns=4)
+													numParallelColumns=3)
 	H_mtx = transferMtxMeasurer.measureTransferMatrix()
 
 	experimentSaveDict =	{
