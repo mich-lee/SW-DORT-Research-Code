@@ -6,14 +6,14 @@ import sys
 import copy
 import datetime
 # import pathlib
-
 import warnings
-from ScattererModel import Scatterer, ScattererModel
-from TransferMatrixProcessor import TransferMatrixProcessor
-from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 
 sys.path.append("holotorch-lib/")
 sys.path.append("holotorch-lib/holotorch")
+
+from ScattererModel import Scatterer, ScattererModel
+from TransferMatrixProcessor import TransferMatrixProcessor
+from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 
 import holotorch.utils.Dimensions as Dimensions
 from holotorch.utils.Enumerators import *
@@ -31,8 +31,6 @@ from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 
 from holotorch.utils.Field_Utils import get_field_slice, applyFilterSpaceDomain
-
-warnings.filterwarnings('always',category=UserWarning)
 
 ################################################################################################################################
 
@@ -85,42 +83,40 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 ################################################################################################################################
 
-# loadedData = torch.load('Experiment_202210201534.pt', map_location=device)
-# loadedData = torch.load('Experiment_202210192329.pt', map_location=device)
-loadedData = torch.load('Experiment_2022-10-27_19h14m38s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_202210201534.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_202210192329.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2022-10-27_19h14m38s.pt', map_location=device)
+loadedData = torch.load('DATA/Experiment_2022-11-6_22h18m58s.pt', map_location=device)
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
 V = Vh.conj().transpose(-2, -1)
 
 model = loadedData['Model']
-# fieldInputPadder = model[0]
-# thinLens1 = model[1][1]
-# # asmProp1a = model[1][0]
-# asmProp1a = ASM_Prop(init_distance=model[1][0]._z)
-# scattererModel = model[2]
-
-fieldIn = copy.deepcopy(loadedData['Field_Input_Prototype'])
-fieldIn.data[...] = 0
-
 inputBoolMask = loadedData['Input_Bool_Mask']
 outputBoolMask = loadedData['Output_Bool_Mask']
 
 q = torch.matmul(Vh[0,0,0,1,:,:], V[0,0,0,0,:,:])
 w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 
-v1 = V[0,0,0,0,:,0]
-v2 = V[0,0,0,1,:,0]
+# Old code:
+	# fieldIn = copy.deepcopy(loadedData['Field_Input_Prototype'])
+	# fieldIn.data[...] = 0
+	# v1 = V[0,0,0,0,:,0]
+	# v2 = V[0,0,0,1,:,0]
+	# fieldIn.data[...] = 0
+	# fieldIn.data[0,0,0,0,inputBoolMask] = v1
+	# fieldIn.data[0,0,0,1,inputBoolMask] = v2
+	# macropixelShape = torch.zeros(fieldIn.data.shape[-2:], device=device)
+	# macropixelShape[253:261,253:261] = 1
+	# fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
+
+singVecNum = 0
+vecIn = V[... , :, singVecNum]
+fieldIn = TransferMatrixProcessor.getModelInput(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
+
 
 # tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
-m1 = torch.nn.Sequential(model[0], model[1], model[2])
-
-fieldIn.data[...] = 0
-fieldIn.data[0,0,0,0,inputBoolMask] = v1
-fieldIn.data[0,0,0,1,inputBoolMask] = v2
-
-macropixelShape = torch.zeros(fieldIn.data.shape[-2:], device=device)
-macropixelShape[253:261,253:261] = 1
-fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
+m1 = model[0:9]
 
 o1 = m1(fieldIn)
 

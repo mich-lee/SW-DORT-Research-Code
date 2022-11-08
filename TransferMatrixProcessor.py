@@ -8,6 +8,8 @@ import time
 
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
 
+from holotorch.utils.Field_Utils import applyFilterSpaceDomain
+
 
 class TransferMatrixProcessor:
 	def __init__(	self,
@@ -27,10 +29,16 @@ class TransferMatrixProcessor:
 		self.initializeTempField(inputFieldPrototype)
 
 		self.useMacropixels = useMacropixels
-		self.inputMacropixelResolution = [int((torch.sum(inputBoolMask, 1) > 0).sum()), int((torch.sum(inputBoolMask, 0) > 0).sum())]
-		self.outputMacropixelResolution = [int((torch.sum(outputBoolMask, 1) > 0).sum()), int((torch.sum(outputBoolMask, 0) > 0).sum())]
-		self.inputMacropixelSize = [inputBoolMask.shape[0] // self.inputMacropixelResolution[0], inputBoolMask.shape[1] // self.inputMacropixelResolution[1]]
-		self.outputMacropixelSize = [outputBoolMask.shape[0] // self.outputMacropixelResolution[0], outputBoolMask.shape[1] // self.outputMacropixelResolution[1]]
+
+		# This has been replaced by the _calculateMacropixelParameters(...) method:
+			# self.inputMacropixelResolution = [int((torch.sum(inputBoolMask, 1) > 0).sum()), int((torch.sum(inputBoolMask, 0) > 0).sum())]
+			# self.outputMacropixelResolution = [int((torch.sum(outputBoolMask, 1) > 0).sum()), int((torch.sum(outputBoolMask, 0) > 0).sum())]
+			# self.inputMacropixelSize = [inputBoolMask.shape[-2] // self.inputMacropixelResolution[0], inputBoolMask.shape[-1] // self.inputMacropixelResolution[1]]
+			# self.outputMacropixelSize = [outputBoolMask.shape[-2] // self.outputMacropixelResolution[0], outputBoolMask.shape[-1] // self.outputMacropixelResolution[1]]
+
+		self.inputMacropixelResolution, self.inputMacropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
+		self.outputMacropixelResolution, self.outputMacropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(outputBoolMask)
+
 
 	def initializeTempField(self, inputFieldPrototype : ElectricField):
 		numParallelColumns = self.numParallelColumns
@@ -64,6 +72,7 @@ class TransferMatrixProcessor:
 		tempWavelength = copy.deepcopy(inputFieldPrototype.wavelengths)
 		tempSpacing = copy.deepcopy(inputFieldPrototype.spacing)
 		self._tempField = ElectricField(data = tempFieldData, wavelengths=tempWavelength, spacing=tempSpacing)
+
 
 	def measureTransferMatrix(self):
 		numParallelColumns = self.numParallelColumns
@@ -107,10 +116,13 @@ class TransferMatrixProcessor:
 			for j in range(min(columnStep, matrixInputLen - i)):
 				# 'tempDataTensor' is a view of self._tempField.data so modifying 'tempDataTensor' will modify self._tempField.data
 				if (self.useMacropixels):
-					startIndHeight = int(heightInds[i+j] - np.ceil(self.inputMacropixelSize[0] / 2) + 1)
-					endIndHeight = int(heightInds[i+j] + np.floor(self.inputMacropixelSize[0] / 2))
-					startIndWidth = int(widthInds[i+j] - np.ceil(self.inputMacropixelSize[1] / 2) + 1)
-					endIndWidth = int(widthInds[i+j] + np.floor(self.inputMacropixelSize[1] / 2))
+					# This has been replaced by the TransferMatrixProcessor.getMacropixelInds(...) method:
+						# startIndHeight = int(heightInds[i+j] - np.ceil(self.inputMacropixelSize[0] / 2) + 1)
+						# endIndHeight = int(heightInds[i+j] + np.floor(self.inputMacropixelSize[0] / 2))
+						# startIndWidth = int(widthInds[i+j] - np.ceil(self.inputMacropixelSize[1] / 2) + 1)
+						# endIndWidth = int(widthInds[i+j] + np.floor(self.inputMacropixelSize[1] / 2))
+
+					startIndHeight, endIndHeight, startIndWidth, endIndWidth = TransferMatrixProcessor._getMacropixelInds(self.inputMacropixelSize, heightInds[i+j], widthInds[i+j])
 					tempDataTensor[... , j, startIndHeight:(endIndHeight+1), startIndWidth:(endIndWidth+1)] = 1
 				else:
 					tempDataTensor[... , j, int(heightInds[i+j]), int(widthInds[i+j])] = 1
@@ -153,3 +165,60 @@ class TransferMatrixProcessor:
 		rollShiftY = (width - yUpper) // 2
 		boolMask = torch.roll(boolMask, shifts=(rollShiftX,rollShiftY), dims=(0,1))
 		return boolMask
+
+	
+	# NOTE: Use endIndHeight+1 and endIndWidth+1 as the end indices when slicing an array or tensor
+	@classmethod
+	def _getMacropixelInds(cls, macropixelSize : list or tuple, heightCenterInd : int, widthCenterInd : int):
+		startIndHeight = int(heightCenterInd - np.ceil(macropixelSize[0] / 2) + 1)
+		endIndHeight = int(heightCenterInd + np.floor(macropixelSize[0] / 2))
+		startIndWidth = int(widthCenterInd - np.ceil(macropixelSize[1] / 2) + 1)
+		endIndWidth = int(widthCenterInd + np.floor(macropixelSize[1] / 2))
+		
+		return startIndHeight, endIndHeight, startIndWidth, endIndWidth
+
+
+	@classmethod
+	def _getMacropixelConvolutionMask(cls, macropixelSize : list or tuple, height : int, width : int, device : torch.device = None):
+		heightCenterInd = np.ceil(height / 2)
+		widthCenterInd = np.ceil(width / 2)
+		startIndHeight, endIndHeight, startIndWidth, endIndWidth = TransferMatrixProcessor._getMacropixelInds(macropixelSize, heightCenterInd, widthCenterInd)
+
+		if (device is None):
+			macropixelMask = torch.zeros(height, width)
+		else:
+			macropixelMask = torch.zeros(height, width, device=device)
+		macropixelMask[startIndHeight:(endIndHeight+1), startIndWidth:(endIndWidth+1)] = 1
+
+		return macropixelMask
+
+
+	@classmethod
+	def _calculateMacropixelParameters(cls, samplingBoolMask : torch.tensor):
+		macropixelResolution = [int((torch.sum(samplingBoolMask, 1) > 0).sum()), int((torch.sum(samplingBoolMask, 0) > 0).sum())]
+		macropixelSize = [samplingBoolMask.shape[-2] // macropixelResolution[0], samplingBoolMask.shape[-1] // macropixelResolution[1]]
+		return macropixelResolution, macropixelSize
+
+
+	@classmethod
+	def getModelInput(cls, macropixelVector : torch.tensor, samplingBoolMask : torch.tensor, fieldPrototype : ElectricField):
+		if (samplingBoolMask.shape[-2:] != fieldPrototype.data.shape[-2:]):
+			raise Exception("Size mismatch between 'samplingBoolMask' and 'fieldPrototype.data'.")
+
+		fieldIn = copy.deepcopy(fieldPrototype)
+		fieldIn.data[...] = 0
+
+		if ((len(fieldIn.data.shape) - 1) != len(macropixelVector.shape)):
+			numExtraDims = len(fieldIn.data.shape) - (len(macropixelVector.shape) + 1)
+			if (fieldIn.data.shape[0:numExtraDims] != torch.Size([1] * numExtraDims)):
+				raise Exception("Could not expand 'macropixelVector'.")
+			newShape = ([1] * numExtraDims) + ([-1] * len(macropixelVector.shape))
+			macropixelVector = macropixelVector.expand(newShape)
+
+		_, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(samplingBoolMask)
+		macropixelConvolutionMask = TransferMatrixProcessor._getMacropixelConvolutionMask(macropixelSize=macropixelSize, height=fieldIn.shape[-2], width=fieldIn.shape[-1], device=fieldIn.data.device)
+		
+		fieldIn.data[..., samplingBoolMask] = macropixelVector
+		fieldIn.data[...] = applyFilterSpaceDomain(macropixelConvolutionMask, fieldIn.data)
+
+		return fieldIn
