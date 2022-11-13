@@ -97,13 +97,23 @@ class TransferMatrixProcessor:
 			t1 = time.time()
 			times = times + [t1 - t_last]
 			t_last = t1
-			print("Columns processed: " + str(i) + "/" + str(len(heightInds)) + "\t|\tElapsed time: %.3fs\t|\tETC: " % (t1 - t0), end="")
+			elapsedTime = t1 - t0
+
+			print("Percent Completion: %.3f%%\t|\t" % ((i/len(heightInds))*100), end="")
+			print("Columns processed: " + str(i) + "/" + str(len(heightInds)) + "\t|\t", end="")
+			print("Rate: ", end="")
 			if (len(times) == 1):
-				print("N/A")
+				print("N/A\t\t|\t", end="")
 			else:
 				t_n = times[max(1, len(times) - 8):]
 				rate = (len(t_n) * columnStep) / sum(t_n)
 				est_time_completion = (matrixInputLen - i) / rate
+				print("%.3f sec/col\t|\t" % (1/rate), end="")
+			print("Elapsed time: %02d:%02d:%02d\t|\t" % (int(elapsedTime // 3600), int((elapsedTime % 3600) // 60), int(elapsedTime % 60)), end="")
+			print("ETC: ", end="")
+			if (len(times) == 1):
+				print("N/A")
+			else:
 				print("%02d:%02d:%02d" % (int(est_time_completion // 3600), int((est_time_completion % 3600) // 60), int(est_time_completion % 60)))
 
 			self._tempField.data[... , :, :] = 0

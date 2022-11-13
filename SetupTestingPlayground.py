@@ -79,7 +79,7 @@ wavelengths = [lambda1, lambda2]
 inputRes = (512, 512)
 inputSpacing = 6.4*um
 
-intermediateRes = (3036, 3036)	# (int(8*inputRes[0]), int(8*inputRes[0]))
+intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
 intermediateSpacing = inputSpacing / 2
 
 outputRes = (3036, 4024)
@@ -120,6 +120,7 @@ fieldIn.spacing.to(device=device)
 printSimulationSize(inputRes, inputSpacing, 'Simulation Input\t|\t')
 printSimulationSize(intermediateRes, intermediateSpacing, 'Intermediate Calcs\t|\t')
 printSimulationSize(outputRes, outputSpacing, 'Simulation Output\t|\t')
+print()
 
 
 ################################################################################################################################
@@ -135,46 +136,59 @@ scattererList = [
 					Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
 				]
 
-wavefrontAberratorGen = WavefrontAberratorGenerator(	meanFreePath = 0.1*mm,
-														screenSigma = 2*np.pi*(1/intermediateSpacing)*0.5,
-														numLayers = 4,
-														resolution = intermediateRes,
-														elementSpacings = [intermediateSpacing, intermediateSpacing],
-														reusePropagator = True,
-														device = device
-													)
-wavefrontAberrator = wavefrontAberratorGen.get_model()
-wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
+	# wavefrontAberratorGen = WavefrontAberratorGenerator(	meanFreePath = 0.1*mm,
+	# 														screenGaussianSigma = 2*np.pi*(1/intermediateSpacing)*0.5,
+	# 														numLayers = 4,
+	# 														resolution = intermediateRes,
+	# 														elementSpacings = [intermediateSpacing, intermediateSpacing],
+	# 														reusePropagator = True,
+	# 														device = device
+	# 													)
 
+# wavefrontAberratorGen = WavefrontAberratorGenerator(	modelType = 'RandomThickness',
+# 														meanThickness = 200*um,
+# 														thicknessVariance = 1.3*um,
+# 														correlationLength = 8.8*um,
+# 														resolution = intermediateRes,
+# 														elementSpacings = [intermediateSpacing, intermediateSpacing],
+# 														device = device
+# 													)
+# wavefrontAberrator = wavefrontAberratorGen.get_model()
+# wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
+
+do_ffts_inplace = True
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=33.333333333333*mm)
-asmProp2 = ASM_Prop(init_distance=50*mm)
-# asmProp3 = ASM_Prop(init_distance=75*mm)
-asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm)
+asmProp1 = ASM_Prop(init_distance=33.333333333333*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp3 = ASM_Prop(init_distance=75*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm, do_ffts_inplace=do_ffts_inplace)
 thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
-memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True)
+memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
+										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
 model = torch.nn.Sequential	(
 								inputResampler,
-								# memoryReclaimer,
+								memoryReclaimer,
 								asmProp1,
 								thinLens,
 								asmProp2,
 								thinLens,
-								asmProp3,
+								# asmProp3,
 								memoryReclaimer,
-								wavefrontAberrator,
+								# wavefrontAberrator,
 								asmProp3,
 								scattererModel,
 								asmProp3,
-								wavefrontAberratorReverse,
-								asmProp3,
+								# wavefrontAberratorReverse,
+								memoryReclaimer,
+								# asmProp3,
 								thinLens,
 								asmProp2,
 								thinLens,
 								asmProp1,
+								memoryReclaimer,
 								outputResampler
 							)
 
