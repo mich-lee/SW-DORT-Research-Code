@@ -14,6 +14,7 @@ sys.path.append("holotorch-lib/holotorch")
 import holotorch.utils.Dimensions as Dimensions
 from holotorch.utils.Enumerators import *
 from holotorch.utils.units import * # E.g. to get nm, um, mm etc.
+from holotorch.Optical_Components.CGH_Component import CGH_Component
 # from holotorch.LightSources.CoherentSource import CoherentSource
 from holotorch.Spectra.WavelengthContainer import WavelengthContainer
 from holotorch.Spectra.SpacingContainer import SpacingContainer
@@ -30,7 +31,7 @@ from holotorch.Miscellaneous_Components.Memory_Reclaimer import Memory_Reclaimer
 
 from ScattererModel import Scatterer, ScattererModel
 from TransferMatrixProcessor import TransferMatrixProcessor
-from WavefrontAberrator import WavefrontAberratorGenerator, WavefrontAberrator
+from WavefrontAberrator import RandomThicknessScreenGenerator, RandomThicknessScreen
 
 from holotorch.utils.Helper_Functions import applyFilterSpaceDomain
 from holotorch.utils.Field_Utils import get_field_slice
@@ -56,6 +57,18 @@ def printSimulationSize(sz : tuple, spacing : float or tuple, prefixStr : str = 
 	dy_um = dy * 1e6
 	print(prefixStr + "Simulation Size: %.3fx%.3f mm\t|\t(dx, dy): (%.3fum, %.3fum)" % (lx_mm, ly_mm, dx_um, dy_um))
 
+class QuickFlip(CGH_Component):
+	def __init__(self) -> None:
+		super().__init__()
+	
+	def forward(self, field : ElectricField) -> ElectricField:
+		newField = ElectricField(
+			data        = torch.flip(field.data, [-2, -1]),
+			spacing     = field.spacing,
+			wavelengths = field.wavelengths            
+		)
+		return newField
+
 ################################################################################################################################
 
 
@@ -76,7 +89,7 @@ lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (512, 512)
+inputRes = (384, 384)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
@@ -133,35 +146,33 @@ scattererList = [
 					# Scatterer(location_x=0*mm, location_y=0*mm, diameter=0.3*mm, scatteringResponse=1),
 					# Scatterer(location_x=0.75*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
 					# Scatterer(location_x=-1*mm, location_y=-1*mm, diameter=0.1*mm, scatteringResponse=1),
-					Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
+					# Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
+					# Scatterer(location_x=2.45*mm, location_y=2.45*mm, diameter=0.1*mm, scatteringResponse=1),
+
+					# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=1),
+					
+					Scatterer(location_x=0.75*1.44*mm, location_y=0.75*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+					Scatterer(location_x=-0.75*1.44*mm, location_y=-0.75*1.44*mm, diameter=0.1*mm, scatteringResponse=1),
 				]
 
-	# wavefrontAberratorGen = WavefrontAberratorGenerator(	meanFreePath = 0.1*mm,
-	# 														screenGaussianSigma = 2*np.pi*(1/intermediateSpacing)*0.5,
-	# 														numLayers = 4,
-	# 														resolution = intermediateRes,
-	# 														elementSpacings = [intermediateSpacing, intermediateSpacing],
-	# 														reusePropagator = True,
-	# 														device = device
-	# 													)
-
-# wavefrontAberratorGen = WavefrontAberratorGenerator(	modelType = 'RandomThickness',
-# 														meanThickness = 200*um,
-# 														thicknessVariance = 1.3*um,
-# 														correlationLength = 8.8*um,
-# 														resolution = intermediateRes,
-# 														elementSpacings = [intermediateSpacing, intermediateSpacing],
-# 														device = device
-# 													)
-# wavefrontAberrator = wavefrontAberratorGen.get_model()
-# wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
+wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
+														correlationLength = 8.8*um,
+														maxThickness = 200*um,
+														n_screen = 1.52,
+														generateBidirectional = True,
+														resolution = intermediateRes,
+														elementSpacings = [intermediateSpacing, intermediateSpacing],
+														device = device
+													)
+wavefrontAberrator = wavefrontAberratorGen.get_model()
+wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 do_ffts_inplace = True
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=33.333333333333*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp3 = ASM_Prop(init_distance=75*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp1 = ASM_Prop(init_distance=275/3*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
 thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
@@ -174,23 +185,48 @@ model = torch.nn.Sequential	(
 								asmProp1,
 								thinLens,
 								asmProp2,
-								thinLens,
-								# asmProp3,
-								memoryReclaimer,
 								# wavefrontAberrator,
-								asmProp3,
-								scattererModel,
-								asmProp3,
-								# wavefrontAberratorReverse,
-								memoryReclaimer,
 								# asmProp3,
-								thinLens,
+								scattererModel,
+								# asmProp3,
+								# wavefrontAberratorReverse,
 								asmProp2,
 								thinLens,
 								asmProp1,
 								memoryReclaimer,
 								outputResampler
 							)
+
+
+# asmProp1 = ASM_Prop(init_distance=33.333333333333*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp2 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp3 = ASM_Prop(init_distance=75*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm, do_ffts_inplace=do_ffts_inplace)
+# thinLens = Thin_Lens(focal_length=50*mm)
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								memoryReclaimer,
+# 								asmProp1,
+# 								thinLens,
+# 								asmProp2,
+# 								thinLens,
+# 								# asmProp3,
+# 								memoryReclaimer,
+# 								# wavefrontAberrator,
+# 								asmProp3,
+# 								scattererModel,
+# 								asmProp3,
+# 								# wavefrontAberratorReverse,
+# 								memoryReclaimer,
+# 								# asmProp3,
+# 								thinLens,
+# 								asmProp2,
+# 								thinLens,
+# 								asmProp1,
+# 								memoryReclaimer,
+# 								outputResampler
+# 							)
+
 
 # asmProp1 = ASM_Prop(init_distance=12.5*mm)
 # asmProp2 = ASM_Prop(init_distance=25*mm)
@@ -216,12 +252,11 @@ model = torch.nn.Sequential	(
 
 ################################################################################################################################
 
+
 inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
 outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 60, 80)
 
-################################################################################################################################
-
-if True:
+if False:
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
 													inputBoolMask=inputBoolMask,
 													outputBoolMask=outputBoolMask,
@@ -270,6 +305,6 @@ fieldOut = model(fieldIn)
 outputs = getSequentialModelOutputSequence(model=model, recursive=False)
 
 # plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-0.075,0.075), plot_ylims=(-0.075,0.075))
-plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0)
+plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0, rescale_factor=0.25)
 
 pass

@@ -100,6 +100,42 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 	# fft2_inplace(a)
 	# Memory_Utils.print_cuda_memory_usage(device=device)
 
+
+
+
+# Miscellaneous
+	# t0 = time.process_time()
+	# testInplaceFFTCorrectness(device=device, inverse_fft_flag=False, print_mem_usage=False)
+	# elapsed_time = time.process_time() - t0
+	# print(elapsed_time)
+
+	# Memory_Utils.print_cuda_memory_usage(device=device)
+	# a = torch.rand(4, 1, 1, 2, 2*3036, 2*3036, dtype=torch.complex64, device=device)
+	# Memory_Utils.print_cuda_memory_usage(device=device)
+	# # a = torch.fft.fft2(a)
+	# fft2_inplace(a)
+	# Memory_Utils.print_cuda_memory_usage(device=device)
+
+	# print("Start:")
+	# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
+	# print()
+	# x = torch.rand(2*3036*2*3036, dtype=torch.complex64, device=device)
+	# print("After initializing x:")
+	# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
+	# print()
+	# x = torch.fft.fftshift(x, dim=-1)
+	# print("After first fftshift:")
+	# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
+	# print()
+	# x = torch.fft.fft(x, dim=-1, norm='ortho')
+	# print("After first fft:")
+	# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
+	# print()
+	# x = torch.fft.fftshift(x, dim=-1)
+	# print("After second fftshift")
+	# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
+	# print()
+
 ################################################################################################################################
 
 # Testing to see if in-place FFT results match the results from other fft2 implementations
@@ -177,37 +213,18 @@ def testInplaceFFTCorrectness(device : torch.device, norm = 'backward', inverse_
 
 ################################################################################################################################
 
-# t0 = time.process_time()
-# testInplaceFFTCorrectness(device=device, inverse_fft_flag=False, print_mem_usage=False)
-# elapsed_time = time.process_time() - t0
-# print(elapsed_time)
+# a = torch.arange(H*W).view(H,W).expand(3,1,1,2,-1,-1) * ((10**torch.arange(3)).view(-1,1,1,1,1,1))
+# a.view(B,T,P,C,H,int(W/wSize),wSize).permute(0,1,2,3,-2,-3,-1).view(3,1,1,2,int(W/wSize),int(H/hSize),hSize,wSize).sum(-2).sum(-1).permute(0,1,2,3,5,4)
 
-# Memory_Utils.print_cuda_memory_usage(device=device)
-# a = torch.rand(4, 1, 1, 2, 2*3036, 2*3036, dtype=torch.complex64, device=device)
-# Memory_Utils.print_cuda_memory_usage(device=device)
-# # a = torch.fft.fft2(a)
-# fft2_inplace(a)
-# Memory_Utils.print_cuda_memory_usage(device=device)
-
-# print("Start:")
-# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
-# print()
-# x = torch.rand(2*3036*2*3036, dtype=torch.complex64, device=device)
-# print("After initializing x:")
-# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
-# print()
-# x = torch.fft.fftshift(x, dim=-1)
-# print("After first fftshift:")
-# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
-# print()
-# x = torch.fft.fft(x, dim=-1, norm='ortho')
-# print("After first fft:")
-# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
-# print()
-# x = torch.fft.fftshift(x, dim=-1)
-# print("After second fftshift")
-# Memory_Utils.print_cuda_memory_usage(device=device, printType=2)
-# print()
+hSize, wSize = 6, 7
+B,T,P,C,H,W = torch.Size([3,1,1,2,14*hSize,19*wSize])
+a = torch.zeros(1,T,P,C,H,W)
+for r in range(int(H/hSize)):
+	for c in range(int(W/wSize)):
+		a[... , r*hSize:(r+1)*hSize, c*wSize:(c+1)*wSize] = (r*int(W/wSize) + c) / (hSize*wSize)
+a = (a * (10 ** torch.arange(B).view(B,1,1,1,1,1))) * (10 ** torch.arange(C).view(1,1,1,C,1,1))
+aTempView = a.view(B,T,P,C,int(H/hSize),hSize,int(W/wSize),wSize)
+aSummed = aTempView.sum(-3).sum(-1)
 
 ################################################################################################################################
 

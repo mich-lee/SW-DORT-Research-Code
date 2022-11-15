@@ -110,13 +110,12 @@ w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 	# macropixelShape[253:261,253:261] = 1
 	# fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
 
+# tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
+m1 = model[0:5]
+
 singVecNum = 0
 vecIn = V[... , :, singVecNum]
 fieldIn = TransferMatrixProcessor.getModelInput(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
-
-
-# tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
-m1 = model[0:9]
 
 o1 = m1(fieldIn)
 

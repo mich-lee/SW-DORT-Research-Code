@@ -7,7 +7,7 @@ import sys
 
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
 from holotorch.Optical_Components.CGH_Component import CGH_Component
-from holotorch.utils.Dimensions import HW, TensorDimension
+from holotorch.utils.Dimensions import HW, BTPCHW
 from holotorch.Spectra.SpacingContainer import SpacingContainer
 from holotorch.utils.Enumerators import *
 from holotorch.utils.Helper_Functions import conv, applyFilterSpaceDomain, ft2, ift2
@@ -66,7 +66,6 @@ class WavefrontAberratorGenerator:
 								}
 								
 		self._initializeFrequencyGrids()
-		self._initializeModel()
 
 	def get_model(self):
 		return self.model
@@ -114,6 +113,7 @@ class WavefrontAberrator(CGH_Component):
 		self.resolution = self.parameterDict['resolution']
 
 	def _check_field_dimensions_valid_bool(self, field : ElectricField) -> bool:
+		self.spacing.to(field.data.device)
 		if not field.spacing.is_equivalent(self.spacing):
 			return False
 		if (field.data.shape[-2] != self.resolution[0]) or (field.data.shape[-1] != self.resolution[1]):
@@ -157,7 +157,10 @@ class RandomPhaseScreen(WavefrontAberrator):
 class RandomThicknessScreen(WavefrontAberrator):
 	def __init__(	self,
 					thicknesses : torch.Tensor,
-					n_screen : float = None,
+					max_thickness : float,
+					n_screen : float,
+					n_ambient : float,
+					sign_convention : ENUM_PHASE_SIGN_CONVENTION = ENUM_PHASE_SIGN_CONVENTION.TIME_PHASORS_ROTATE_CLOCKWISE,
 					direction_label : str = '',
 					parameterDict : dict = None
 				) -> None:
@@ -165,15 +168,36 @@ class RandomThicknessScreen(WavefrontAberrator):
 			direction_label = direction_label,
 			parameterDict = parameterDict
 		)
+		if (sign_convention != ENUM_PHASE_SIGN_CONVENTION.TIME_PHASORS_ROTATE_CLOCKWISE):
+			raise Exception("The provided sign_convention has not been implemented.")
 		self.thicknesses = thicknesses
+		self.max_thickness = max_thickness
 		self.n_screen = n_screen
+		self.n_ambient = n_ambient
+		self.sign_convention = sign_convention
 
 	def forward(self, field : ElectricField) -> ElectricField:
 		self._check_field_dimensions_valid(field)
 
-		# pathLen = 
+		lambda0 = field.wavelengths.data_tensor.view(field.wavelengths.tensor_dimension.get_new_shape(new_dim=BTPCHW))
+		thicknesses = self.thicknesses[None, None, None, None, :, :]
 
-		return self.model(field)
+		l_screen = thicknesses
+		l_ambient = self.max_thickness - thicknesses
+		k_screen = 2 * np.pi / (lambda0 / self.n_screen)
+		k_ambient = 2 * np.pi / (lambda0 / self.n_ambient)
+
+		# Using the convention that phasors in time rotate clockwise (so delays are positive phase shifts)
+		delta_phi_screen = (k_screen * l_screen) + (k_ambient * l_ambient)
+		screen = torch.exp(1j * delta_phi_screen)
+
+		fieldOut = ElectricField(
+									data = field.data * screen,
+									wavelengths = field.wavelengths,
+									spacing = field.spacing
+								)
+
+		return fieldOut
 
 
 
@@ -187,22 +211,26 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 		- asdsadasdasdasdasd
 	"""
 	def __init__(	self,
-					resolution				: list or tuple,
-					elementSpacings 		: list or tuple,
-					meanThickness			: float,
-					thicknessVariance		: float,
-					correlationLength		: float,
-					n_screen				: float = None,
-					reuseScreen				: bool = True,
-					generateBidirectional	: bool = False,
-					device					: torch.device = None,
-					gpu_no					: int = 0,
-					use_cuda				: bool = False
+					resolution						: list or tuple,
+					elementSpacings 				: list or tuple,
+					n_screen						: float,
+					surfaceVariationStdDev			: float,
+					correlationLength				: float,
+					maxThickness					: float,
+					minThickness					: float = 0,
+					thicknessVariationMaxRange		: float = None,
+					n_ambient						: float = 1,	# Assume free space
+					doubleSidedRoughness			: bool = False,
+					reuseScreenForBidirectional		: bool = True,
+					generateBidirectional			: bool = False,
+					device							: torch.device = None,
+					gpu_no							: int = 0,
+					use_cuda						: bool = False
 				) -> None:
 
 		self.modelType = 'RandomThicknessScreen'
 
-		super.__init__(
+		super().__init__(
 			resolution				= resolution,
 			elementSpacings			= elementSpacings,
 			generateBidirectional	= generateBidirectional,
@@ -211,38 +239,53 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			use_cuda				= use_cuda
 		)
 
-		self.meanThickness = meanThickness
-		self.thicknessVariance = thicknessVariance
-		self.correlationLength = correlationLength
 		self.n_screen = n_screen
-		self.reuseScreen = reuseScreen
+		self.n_ambient = n_ambient
+		self.surfaceVariationStdDev = surfaceVariationStdDev
+		self.surfaceVariationVariance = surfaceVariationStdDev**2
+		self.correlationLength = correlationLength
+		self.maxThickness = maxThickness
+		self.minThickness = minThickness
+		if (thicknessVariationMaxRange is None):
+			self.thicknessVariationMaxRange = 10 * surfaceVariationStdDev	# I.e. within +/- 5 standard deviations of the mean
+		else:
+			self.thicknessVariationMaxRange = thicknessVariationMaxRange
+		self.doubleSidedRoughness = doubleSidedRoughness
+		self.reuseScreenForBidirectional = reuseScreenForBidirectional
 
-		self._parameterDict['meanThickness']		= meanThickness
-		self._parameterDict['thicknessVariance']	= thicknessVariance
-		self._parameterDict['correlationLength']	= correlationLength
-		self._parameterDict['n_screen']				= n_screen
-		self._parameterDict['reuseScreen']			= reuseScreen
+		self._parameterDict['n_screen']							= n_screen
+		self._parameterDict['n_ambient']						= n_ambient
+		self._parameterDict['surfaceVariationStdDev']			= surfaceVariationStdDev
+		self._parameterDict['surfaceVariationVariance']			= self.surfaceVariationVariance
+		self._parameterDict['correlationLength']				= correlationLength
+		self._parameterDict['maxThickness']						= maxThickness
+		self._parameterDict['minThickness']						= minThickness
+		self._parameterDict['thicknessVariationMaxRange']		= thicknessVariationMaxRange
+		self._parameterDict['doubleSidedRoughness']				= doubleSidedRoughness
+		self._parameterDict['reuseScreenForBidirectional']		= reuseScreenForBidirectional
+
+		self._initializeModel()
 
 
 	def _initializeModel(self):
 		self._initializeRandomHeights()
 		
-		if not self.reuseScreens:
-			self.model = RandomThicknessScreen(thicknesses=self.thicknesses, n_screen=self.n_screen, direction_label='normal', parameterDict=self._parameterDict)
+		if not self.reuseScreenForBidirectional:
+			self.model = RandomThicknessScreen(thicknesses=self.thicknesses, max_thickness=self.maxThickness, n_screen=self.n_screen, n_ambient=self.n_ambient, direction_label='normal', parameterDict=self._parameterDict)
 		else:
-			self.model = RandomThicknessScreen(thicknesses=self.thicknesses, n_screen=self.n_screen, direction_label='both', parameterDict=self._parameterDict)
+			self.model = RandomThicknessScreen(thicknesses=self.thicknesses, max_thickness=self.maxThickness, n_screen=self.n_screen, n_ambient=self.n_ambient, direction_label='both', parameterDict=self._parameterDict)
 
 		if self.generateBidirectional:
-			if not self.reuseScreen:
-				self.modelReversed = RandomThicknessScreen(thicknesses=self.thicknesses, n_screen=self.n_screen, direction_label='reverse', parameterDict=self._parameterDict)
+			if not self.reuseScreenForBidirectional:
+				self.modelReversed = RandomThicknessScreen(thicknesses=self.thicknesses, max_thickness=self.maxThickness, n_screen=self.n_screen, n_ambient=self.n_ambient, direction_label='reverse', parameterDict=self._parameterDict)
 			else:
 				self.modelReversed = self.model
 		else:
 			self.modelReversed = None
 
 	def _initializeRandomHeights(self):
-		def generateRandomHeightsHelper1(filterSigma, kx, ky, padding, meanThickness, thicknessVariance, device):
-			heights0 = generateRandomHeightsHelper2(filterSigma, kx, ky, thicknessVariance, device)
+		def generateRandomHeightsHelper1(filterSigma, kx, ky, padding, surfaceVariance, device):
+			heights0 = generateRandomHeightsHelper2(filterSigma, kx, ky, device)
 			heights1 = torch.zeros_like(heights0)
 			heights1[padding[0]:-padding[1], padding[2]:-padding[3]] = torch.flip(heights0[padding[0]:-padding[1], padding[2]:-padding[3]], [0,1])
 
@@ -251,31 +294,24 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			# Note that if padding is zero (should not occur), one will get wraparound and throw off (probably only slightly) the autocorrelation result.
 			heights1 = torch.roll(heights1, (1,1), (0,1))
 
-			# Because of the way 'heights0' and 'heights1' were set up, this should hopefully approximate an unbiased autocorrelation
-			ht_autocorr = conv(heights0, heights1)
+			# Because of the way 'heights0' and 'heights1' were set up (i.e. heights1 being a truncated and padded version of heights1),
+			# this should hopefully approximate an unbiased autocorrelation
+			ht_autocorr = conv(heights0, heights1, use_inplace_ffts=True)
 			ht_autocorr = ht_autocorr[padding[0]:-padding[1], padding[2]:-padding[3]].real
 
 			ht = heights0[padding[0]:-padding[1], padding[2]:-padding[3]]
 
-			# Fixing the variance and removing the mean (again, and somewhat redundantly)
+			# Fixing the variance and removing the mean
 			ht_var = ((ht - ht.mean()) ** 2).sum() / ht.numel()
-			ht = (ht - ht.mean()) * np.sqrt(thicknessVariance) / torch.sqrt(ht_var)
-
-			# Adding the mean
-			ht = ht + meanThickness
+			ht = (ht - ht.mean()) * np.sqrt(surfaceVariance) / torch.sqrt(ht_var)
 			
 			return ht, ht_autocorr
 			
-		def generateRandomHeightsHelper2(filterSigma, kx, ky, thicknessVariance, device):
+		def generateRandomHeightsHelper2(filterSigma, kx, ky, device):
 			ht = torch.randn(kx.shape[-2], kx.shape[-1], dtype=torch.float, device=device)
 			H = WavefrontAberratorGenerator._generateGaussian(filterSigma, kx, ky, domain='frequency', device=self.device)
 			h = ift2(H, norm='backward').real
-			ht = applyFilterSpaceDomain(h, ht).real
-
-			# Fixing the variance and removing the mean
-			ht_var = ((ht - ht.mean()) ** 2).sum() / ht.numel()
-			ht = (ht - ht.mean()) * np.sqrt(thicknessVariance) / torch.sqrt(ht_var)
-
+			ht = applyFilterSpaceDomain(h, ht, use_inplace_ffts=True).real
 			return ht
 		
 		pad_x1 = int(np.floor(self.resolution[0] / 2))
@@ -286,7 +322,7 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 		H = self.resolution[0] + pad_x1 + pad_x2
 		W = self.resolution[1] + pad_y1 + pad_y2
 
-		# Making the grids twice as big to facilitate removing bias in the autocorrelation later
+		# Making the grids twice as big to avoid edge effects when filtering in generateRandomHeightsHelper2(...).
 		kxTemp, kyTemp = WavefrontAberratorGenerator._create_normalized_grid(H, W, self.device)
 		kxTemp = 2*np.pi * kxTemp / self.elementSpacings[0]
 		kyTemp = 2*np.pi * kyTemp / self.elementSpacings[1]
@@ -295,12 +331,29 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 		# xGrid = xGridNorm * self.resolution[0] * self.elementSpacings[0]
 		# yGrid = yGridNorm * self.resolution[1] * self.elementSpacings[1]
 
-		# The 'filterSigma' argument is set to self.correlationLength/2.  This was obtained by considering that autocorrelation is
-		# |H(e^{j\omega})|^2\Phi_{xx}(e^{j\omega}) in frequency.  By looking at the Fourier transform pair for a Gaussian, it can be
-		# seen that letting filterSigma=self.correlationLength/2 results in the autocorrelation dropping to 1/e times its max value
-		# at a distance of self.correlationLength from the origin (assuming that X is a random signal drawn from a zero-mean Gaussian distribution).
-		# Note that autocorrelation in this context refers to autocorrelation with means removed.
-		heights, heightAutocorr = generateRandomHeightsHelper1(self.correlationLength / 2, kxTemp, kyTemp, padding, self.meanThickness, self.thicknessVariance, self.device)
+		heights = 0
+		for _ in range(2):
+			# The 'filterSigma' argument is set to self.correlationLength/2.  This was obtained by considering that autocorrelation is
+			# |H(e^{j\omega})|^2\Phi_{xx}(e^{j\omega}) in frequency, and the filter H is Gausssian in this case.
+			# 	-	By looking at the Fourier transform pair for a Gaussian, it can be seen that letting filterSigma=self.correlationLength/2 results
+			# 		in the autocorrelation dropping to 1/e times its max value at a distance of self.correlationLength from the origin
+			# 		(assuming that X is a random signal drawn from a zero-mean Gaussian distribution).
+			#	-	Note that the autocorrelation of the unfiltered phases will essentially be a delta function (i.e. a constant in frequency) so
+			#		the autocorrelation's shape will more-or-less be determined by H(e^{j\omega}).
+			#	-	Note that autocorrelation in this context refers to autocorrelation with means removed.
+			heightsTemp, heightAutocorrTemp = generateRandomHeightsHelper1(self.correlationLength / 2, kxTemp, kyTemp, padding, self.surfaceVariationVariance, self.device)
+
+			heightVariationCutoff = self.thicknessVariationMaxRange / 2
+			heightsTemp = torch.clamp(heightsTemp, -heightVariationCutoff, heightVariationCutoff)
+
+			heights = heights + heightsTemp
+
+			if not self.doubleSidedRoughness:
+				break
+		
+		heights = heights + (self.maxThickness - heights.max())
+		heights = torch.max(heights, torch.tensor(self.minThickness))
+		
 		self.thicknesses = heights
 
 		return
@@ -333,7 +386,7 @@ class RandomPhaseScreenGenerator(WavefrontAberratorGenerator):
 
 		self.modelType = 'RandomPhaseScreen'
 
-		super.__init__(
+		super().__init__(
 			resolution				= resolution,
 			elementSpacings			= elementSpacings,
 			generateBidirectional	= generateBidirectional,
@@ -351,6 +404,8 @@ class RandomPhaseScreenGenerator(WavefrontAberratorGenerator):
 		self._parameterDict['screenGaussianSigma']		= screenGaussianSigma
 		self._parameterDict['numLayers']				= numLayers
 		self._parameterDict['reusePropagator']			= reusePropagator
+
+		self._initializeModel()
 
 
 	def _initializeModel(self):
