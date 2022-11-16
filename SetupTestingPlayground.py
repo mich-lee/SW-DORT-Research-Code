@@ -27,6 +27,7 @@ from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 # from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
+from holotorch.Optical_Setups.Ideal_Imaging_Lens import Ideal_Imaging_Lens
 from holotorch.Miscellaneous_Components.Memory_Reclaimer import Memory_Reclaimer
 
 from ScattererModel import Scatterer, ScattererModel
@@ -95,7 +96,7 @@ inputSpacing = 6.4*um
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
 intermediateSpacing = inputSpacing / 2
 
-outputRes = (3036, 4024)
+outputRes = (3036, 3036)
 outputSpacing = 1.85*um
 
 
@@ -149,10 +150,10 @@ scattererList = [
 					# Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
 					# Scatterer(location_x=2.45*mm, location_y=2.45*mm, diameter=0.1*mm, scatteringResponse=1),
 
-					# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=1),
+					Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=1),
 					
-					Scatterer(location_x=0.75*1.44*mm, location_y=0.75*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
-					Scatterer(location_x=-0.75*1.44*mm, location_y=-0.75*1.44*mm, diameter=0.1*mm, scatteringResponse=1),
+					# Scatterer(location_x=0.75*1.44*mm, location_y=0.75*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=-0.75*1.44*mm, location_y=-0.75*1.44*mm, diameter=0.1*mm, scatteringResponse=1),
 				]
 
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
@@ -181,21 +182,29 @@ outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputR
 
 model = torch.nn.Sequential	(
 								inputResampler,
-								memoryReclaimer,
-								asmProp1,
-								thinLens,
-								asmProp2,
-								# wavefrontAberrator,
-								# asmProp3,
+								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=275/3*mm, device=device),
 								scattererModel,
-								# asmProp3,
-								# wavefrontAberratorReverse,
-								asmProp2,
-								thinLens,
-								asmProp1,
-								memoryReclaimer,
+								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=110*mm, device=device),
 								outputResampler
 							)
+
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								memoryReclaimer,
+# 								asmProp1,
+# 								thinLens,
+# 								asmProp2,
+# 								# wavefrontAberrator,
+# 								# asmProp3,
+# 								scattererModel,
+# 								# asmProp3,
+# 								# wavefrontAberratorReverse,
+# 								asmProp2,
+# 								thinLens,
+# 								asmProp1,
+# 								memoryReclaimer,
+# 								outputResampler
+# 							)
 
 
 # asmProp1 = ASM_Prop(init_distance=33.333333333333*mm, do_ffts_inplace=do_ffts_inplace)
@@ -254,7 +263,7 @@ model = torch.nn.Sequential	(
 
 
 inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
-outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 60, 80)
+outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
 
 if False:
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
@@ -295,6 +304,8 @@ if False:
 ################################################################################################################################
 
 # model = torch.nn.Sequential(inputResampler, wavefrontAberrator, ASM_Prop(init_distance=25*mm))
+_, pixSize = TransferMatrixProcessor._calculateMacropixelParameters(outputBoolMask)
+indsBlah = TransferMatrixProcessor._getMacropixelIndsFromBoolMask(outputBoolMask, pixSize, device=device)
 
 ################################################################################################################################
 

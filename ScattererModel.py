@@ -71,7 +71,7 @@ class ScattererModel(CGH_Component):
 		self.resolution = resolution
 		self.grid_spacing = grid_spacing
 
-		[self.xGrid, self.yGrid] = generateGrid(self.resolution, self.grid_spacing[0], self.grid_spacing[1])
+		[self.xGrid, self.yGrid] = generateGrid(self.resolution, self.grid_spacing[0], self.grid_spacing[1], centerGrids=True, centerCoordsAroundZero=False)
 		self.scatterer_mask = SimpleMask(
 											tensor_dimension=HW(self.resolution[0], self.resolution[1]),
 											init_type=INIT_TYPE.ZEROS,

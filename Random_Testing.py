@@ -13,17 +13,21 @@ sys.path.append("holotorch-lib/")
 sys.path.append("holotorch-lib/holotorch")
 
 import holotorch.utils.Dimensions as Dimensions
-# from holotorch.utils.Enumerators import *
-# from holotorch.utils.units import * # E.g. to get nm, um, mm etc.
+from holotorch.utils.Enumerators import *
+from holotorch.utils.units import * # E.g. to get nm, um, mm etc.
 # from holotorch.Spectra.WavelengthContainer import WavelengthContainer
 from holotorch.Spectra.SpacingContainer import SpacingContainer
-# from holotorch.CGH_Datatypes.ElectricField import ElectricField
-# # from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
-# # from holotorch.Optical_Components.Thin_Lens import Thin_Lens
+from holotorch.CGH_Datatypes.ElectricField import ElectricField
+from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
+from holotorch.Optical_Components.Thin_Lens import Thin_Lens
+from holotorch.Optical_Components.Field_Resampler import Field_Resampler
+from holotorch.Optical_Setups.Ideal_Imaging_Lens import Ideal_Imaging_Lens
 
 from holotorch.utils.Helper_Functions import ft2, ift2, fft2_inplace, ifft2_inplace
 # from holotorch.utils.Field_Utils import get_field_slice
 # from MiscHelperFunctions import getSequentialModelComponentSequence, addSequentialModelOutputHooks, getSequentialModelOutputSequence, plotModelOutputSequence
+
+from TransferMatrixProcessor import TransferMatrixProcessor
 
 import holotorch.utils.Memory_Utils as Memory_Utils
 
@@ -216,15 +220,50 @@ def testInplaceFFTCorrectness(device : torch.device, norm = 'backward', inverse_
 # a = torch.arange(H*W).view(H,W).expand(3,1,1,2,-1,-1) * ((10**torch.arange(3)).view(-1,1,1,1,1,1))
 # a.view(B,T,P,C,H,int(W/wSize),wSize).permute(0,1,2,3,-2,-3,-1).view(3,1,1,2,int(W/wSize),int(H/hSize),hSize,wSize).sum(-2).sum(-1).permute(0,1,2,3,5,4)
 
-hSize, wSize = 6, 7
-B,T,P,C,H,W = torch.Size([3,1,1,2,14*hSize,19*wSize])
-a = torch.zeros(1,T,P,C,H,W)
-for r in range(int(H/hSize)):
-	for c in range(int(W/wSize)):
-		a[... , r*hSize:(r+1)*hSize, c*wSize:(c+1)*wSize] = (r*int(W/wSize) + c) / (hSize*wSize)
-a = (a * (10 ** torch.arange(B).view(B,1,1,1,1,1))) * (10 ** torch.arange(C).view(1,1,1,C,1,1))
-aTempView = a.view(B,T,P,C,int(H/hSize),hSize,int(W/wSize),wSize)
-aSummed = aTempView.sum(-3).sum(-1)
+# hSize, wSize = 6, 7
+# B,T,P,C,H,W = torch.Size([3,1,1,2,14*hSize,19*wSize])
+# a = torch.zeros(1,T,P,C,H,W)
+# for r in range(int(H/hSize)):
+# 	for c in range(int(W/wSize)):
+# 		a[... , r*hSize:(r+1)*hSize, c*wSize:(c+1)*wSize] = (r*int(W/wSize) + c) / (hSize*wSize)
+# a = (a * (10 ** torch.arange(B).view(B,1,1,1,1,1))) * (10 ** torch.arange(C).view(1,1,1,C,1,1))
+# aTempView = a.view(B,T,P,C,int(H/hSize),hSize,int(W/wSize),wSize)
+# aSummed = aTempView.sum(-3).sum(-1)
+
+# inputRes = (384, 384)
+# outputRes = (3036, 3036)
+# inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
+# outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
+# _, pixSize = TransferMatrixProcessor._calculateMacropixelParameters(outputBoolMask)
+# indsBlahHeight, indsBlahWidth = TransferMatrixProcessor._getMacropixelIndsFromBoolMask(outputBoolMask, pixSize, device=device)
+
+# fieldIn = ElectricField.zeros((1, 1, 1, 1, 4096, 4096), 550*nm, 3.2*um).to(device=device)
+# fieldIn.data[... , (2048-512):(2048+512), (2048-512):(2048+512)] = 1
+# # fieldIn.data[... , 2047:2049, 2047:2049] = 1
+# asm1 = ASM_Prop(init_distance=105*mm)
+# thinLens = Thin_Lens(focal_length=35*mm)
+# asm2 = ASM_Prop(init_distance=52.5*mm)
+# fieldOut = asm1(thinLens(asm2(fieldIn)))
+# # fieldOut.data = fieldOut.data + fieldIn.data
+# fieldOut.visualize(plot_type=ENUM_PLOT_TYPE.MAGNITUDE, flag_axis=False)
+
+# fieldIn = ElectricField.zeros((1, 1, 1, 1, 2048, 2048), 550*nm, 3.2*um).to(device=device)
+# fieldIn.data = fieldIn.data.to(dtype=torch.complex64)
+# # fieldIn.data = torch.rand(fieldIn.data.shape, device=device) + 0j
+# # fieldIn.data[... , 1023:1025, 1023:1025] = 1
+# # fieldIn.data = torch.arange(fieldIn.data.shape[-1], device=device).repeat(1, 1, 1, 1, fieldIn.data.shape[-2], 1) + 0j
+# # fieldIn.data[... , 974:1074, 974:1074] = torch.rand(100,100)
+# fieldIn.data[... , 1020:1028, 1020:1028] = torch.rand(8,8)
+# resamp = Field_Resampler(2048, 2048, 3.2*um, 3.2*um, interpolationMode='nearest', magnification=2, device=device)
+# fieldOut = resamp(fieldIn)
+
+fieldIn = ElectricField.zeros((1, 1, 1, 1, 4096, 4096), 550*nm, 3.2*um).to(device=device)
+fieldIn.data = fieldIn.data.to(dtype=torch.complex64)
+fieldIn.data[... , (2048-256):(2048+256), (2048-256):(2048+256)] = 1
+fieldIn.data = fieldIn.data.roll((400,400),(-2,-1))
+im = Ideal_Imaging_Lens(focal_length=35*mm, object_dist=52.5*mm, device=device)
+fieldOut = im(fieldIn)
+fieldOut.visualize(plot_type=ENUM_PLOT_TYPE.MAGNITUDE, flag_axis=False)
 
 ################################################################################################################################
 

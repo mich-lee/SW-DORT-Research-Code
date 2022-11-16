@@ -14,8 +14,8 @@ from holotorch.utils.Field_Utils import applyFilterSpaceDomain
 class TransferMatrixProcessor:
 	def __init__(	self,
 					inputFieldPrototype : ElectricField,
-					inputBoolMask : torch.tensor,
-					outputBoolMask : torch.tensor,
+					inputBoolMask : torch.Tensor,
+					outputBoolMask : torch.Tensor,
 					model : torch.nn.Module,
 					numParallelColumns: int = 8,
 					useMacropixels : bool = True
@@ -59,7 +59,7 @@ class TransferMatrixProcessor:
 			columnStep = numParallelColumns
 		else:
 			# columnStep = 1
-			raise Exception("Could not find any available singleton dimensions to calculate responses in paralle.")
+			raise Exception("Could not find any available singleton dimensions to calculate responses in parallel.")
 
 		# if (numParallelColumns > 1) and (parallelDim == -1):
 		# 	warnings.warn("Specified more than one column to be computed in parallel but was unable to find an available dimension on the tensor.  Computing one column at a time.")
@@ -152,29 +152,70 @@ class TransferMatrixProcessor:
 
 
 	@classmethod
-	def getUniformSampleBoolMask(cls, height, width, nx, ny):
+	def getUniformSampleBoolMask(cls, height, width, nx, ny, samplingType : str = 'block'):
+		# Notes on 'samplingType' argument:
+		# 	-	If samplingType is 'point', then sample to get the tightest fit for the collection of points.
+		# 	-	If samplingType is 'block', then sample to get the tightest fit for a collection of blocks.
+		if (samplingType != 'point') and (samplingType != 'block'):
+			raise Exception("Invalid arguments.  'samplingType' must be either 'point' or 'block'.")
 		if (nx > height) or (ny > width):
 			raise Exception("Invalid arguments.  'nx' must be less than 'height' and 'ny' must be less than 'width'.")
+		
 		boolMask = torch.zeros(height, width) != 0	# Initializes everything to False
+		
 		if (height == 0) or (width == 0) or (nx == 0) or (ny == 0):
 			return boolMask
+		
 		if (nx == 1):
 			xStep = 1
 			xUpper = 1
 		else:
-			xStep = np.maximum((height-1)//(nx-1), 1)
-			xUpper = ((nx - 1) * xStep) + 1
+			if (samplingType == 'point'):
+				xStep = np.maximum((height-1)//(nx-1), 1)
+			else:	# <--- samplingType == 'block'
+				xStep = np.maximum(height//nx, 1)
+			xUpper = ((nx - 1) * xStep) + 1		# Adding 1 because the upper index in Python indexing is non-inclusive
+		
 		if (ny == 1):
 			yStep = 1
 			yUpper = 1
 		else:
-			yStep = np.maximum((width-1)//(ny-1), 1)
+			if (samplingType == 'point'):
+				yStep = np.maximum((width-1)//(ny-1), 1)
+			else:	# <--- samplingType == 'block'
+				yStep = np.maximum(width//ny, 1)
 			yUpper = ((ny - 1) * yStep) + 1
+			
 		boolMask[0:xUpper:xStep, 0:yUpper:yStep] = True
 		rollShiftX = (height - xUpper) // 2
 		rollShiftY = (width - yUpper) // 2
 		boolMask = torch.roll(boolMask, shifts=(rollShiftX,rollShiftY), dims=(0,1))
 		return boolMask
+
+
+	# This helps facilitate adding up pixel field values over each macropixel.  One can use the returned 'inds' to index the height and width 
+	# dimensions of a field tensor.
+	# Specifically, one can call something akin to:
+	#		field_data[heightInds2,widthInds2].view({dimensions of field_data minus the last one), macropixelSize[0]*macropixelSize[1]).sum(-1)
+	# to get the sum of pixel field values over each macropixel.
+	@classmethod
+	def _getMacropixelIndsFromBoolMask(cls, boolMask : torch.Tensor, macropixelSize : list or tuple, device : torch.device = None):
+		heightIndGrid, widthIndGrid = torch.meshgrid(torch.tensor(range(boolMask.shape[-2]), device=device), torch.tensor(range(boolMask.shape[-1]), device=device))
+		heightInds = heightIndGrid[... , boolMask]
+		widthInds = widthIndGrid[... , boolMask]
+
+		numPixelsPerInd = macropixelSize[0] * macropixelSize[1]
+
+		# Intentionally coupling this to the _getMacroPixelInds method so that stuff has to stay consistent
+		hStartOffset, hEndOffset, wStartOffset, wEndOffset = TransferMatrixProcessor._getMacropixelInds(macropixelSize, 0, 0)
+
+		hOffsetRange = torch.arange(hStartOffset, hEndOffset+1, device=device).view(-1, 1).repeat(1, macropixelSize[1]).view(1, numPixelsPerInd)
+		wOffsetRange = torch.arange(wStartOffset, wEndOffset+1, device=device).repeat(macropixelSize[0])
+		
+		heightInds2 = (heightInds.view(-1, 1) + hOffsetRange).view(len(heightInds) * numPixelsPerInd).to(dtype=torch.long)
+		widthInds2 = (widthInds.view(-1, 1) + wOffsetRange).view(len(widthInds) * numPixelsPerInd).to(dtype=torch.long)
+
+		return heightInds2, widthInds2
 
 	
 	# NOTE: Use endIndHeight+1 and endIndWidth+1 as the end indices when slicing an array or tensor
@@ -204,14 +245,14 @@ class TransferMatrixProcessor:
 
 
 	@classmethod
-	def _calculateMacropixelParameters(cls, samplingBoolMask : torch.tensor):
+	def _calculateMacropixelParameters(cls, samplingBoolMask : torch.Tensor):
 		macropixelResolution = [int((torch.sum(samplingBoolMask, 1) > 0).sum()), int((torch.sum(samplingBoolMask, 0) > 0).sum())]
 		macropixelSize = [samplingBoolMask.shape[-2] // macropixelResolution[0], samplingBoolMask.shape[-1] // macropixelResolution[1]]
 		return macropixelResolution, macropixelSize
 
 
 	@classmethod
-	def getModelInput(cls, macropixelVector : torch.tensor, samplingBoolMask : torch.tensor, fieldPrototype : ElectricField):
+	def getModelInput(cls, macropixelVector : torch.Tensor, samplingBoolMask : torch.Tensor, fieldPrototype : ElectricField):
 		if (samplingBoolMask.shape[-2:] != fieldPrototype.data.shape[-2:]):
 			raise Exception("Size mismatch between 'samplingBoolMask' and 'fieldPrototype.data'.")
 
