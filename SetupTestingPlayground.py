@@ -103,6 +103,9 @@ outputSpacing = 1.85*um
 ################################################################################################################################
 
 
+inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
+outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
+
 centerXInd = int(np.floor((inputRes[0] - 1) / 2))
 centerYInd = int(np.floor((inputRes[1] - 1) / 2))
 
@@ -113,9 +116,9 @@ elif isinstance(wavelengths, list):
 spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 
-fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
+fieldData = torch.zeros(4,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-fieldData[... , 0:8, 0:8] = 1
+fieldData[... , 0:12, 0:12] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
 # fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
 # fieldData[...,:,:] = 1
@@ -150,31 +153,32 @@ scattererList = [
 					# Scatterer(location_x=1.2*mm, location_y=1.2*mm, diameter=0.1*mm, scatteringResponse=1),
 					# Scatterer(location_x=2.45*mm, location_y=2.45*mm, diameter=0.1*mm, scatteringResponse=1),
 
-					Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=1),
+					# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=1),
 					
-					# Scatterer(location_x=0.75*1.44*mm, location_y=0.75*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=-0.75*1.44*mm, location_y=-0.75*1.44*mm, diameter=0.1*mm, scatteringResponse=1),
+					Scatterer(location_x=-0.75*1.44*mm, location_y=-0.75*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+					Scatterer(location_x=0.75*1.44*mm, location_y=0.75*1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
 				]
 
-wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
-														correlationLength = 8.8*um,
-														maxThickness = 200*um,
-														n_screen = 1.52,
-														generateBidirectional = True,
-														resolution = intermediateRes,
-														elementSpacings = [intermediateSpacing, intermediateSpacing],
-														device = device
-													)
-wavefrontAberrator = wavefrontAberratorGen.get_model()
-wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
+# wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
+# 														correlationLength = 8.8*um,
+# 														maxThickness = 200*um,
+# 														n_screen = 1.52,
+# 														generateBidirectional = True,
+# 														resolution = intermediateRes,
+# 														elementSpacings = [intermediateSpacing, intermediateSpacing],
+# 														device = device
+# 													)
+# wavefrontAberrator = wavefrontAberratorGen.get_model()
+# wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 do_ffts_inplace = True
+
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=275/3*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
-thinLens = Thin_Lens(focal_length=50*mm)
+# asmProp1 = ASM_Prop(init_distance=275/3*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
+# thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
@@ -182,15 +186,23 @@ outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputR
 
 model = torch.nn.Sequential	(
 								inputResampler,
-								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=275/3*mm, device=device),
+								FT_Lens(focal_length=50*mm),
 								scattererModel,
-								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=110*mm, device=device),
+								# FT_Lens(focal_length=50*mm),
 								outputResampler
 							)
 
 # model = torch.nn.Sequential	(
 # 								inputResampler,
-# 								memoryReclaimer,
+# 								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=275/3*mm, device=device),
+# 								scattererModel,
+# 								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=110*mm, device=device),
+# 								outputResampler
+# 							)
+
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								# memoryReclaimer,
 # 								asmProp1,
 # 								thinLens,
 # 								asmProp2,
@@ -202,8 +214,9 @@ model = torch.nn.Sequential	(
 # 								asmProp2,
 # 								thinLens,
 # 								asmProp1,
-# 								memoryReclaimer,
-# 								outputResampler
+# 								# memoryReclaimer,
+# 								outputResampler,
+# 								# memoryReclaimer
 # 							)
 
 
@@ -260,55 +273,6 @@ model = torch.nn.Sequential	(
 
 
 ################################################################################################################################
-
-
-inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
-outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
-
-if False:
-	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,
-													inputBoolMask=inputBoolMask,
-													outputBoolMask=outputBoolMask,
-													model=model,
-													numParallelColumns=3)
-	H_mtx = transferMtxMeasurer.measureTransferMatrix()
-
-	experimentSaveDict =	{
-								'Transfer_Matrix'				:	H_mtx,
-								'Model'							:	model,
-								'Scatterer_List'				:	scattererList,
-								'Field_Input_Prototype'			:	fieldIn,
-								'Input_Bool_Mask'				:	inputBoolMask,
-								'Output_Bool_Mask'				:	outputBoolMask,
-								'Transfer_Matrix_Processor'		:	transferMtxMeasurer,
-								'NOTE'							:	''
-							}
-	
-	curDateTime = datetime.datetime.today()
-	experimentSaveFileStr = 'Experiment_' + str(curDateTime.year) + '-' + str(curDateTime.month) + '-' + str(curDateTime.day) + '_' + \
-							str(curDateTime.hour).zfill(2) + 'h' + str(curDateTime.minute).zfill(2) + 'm' + str(curDateTime.second).zfill(2) + 's.pt'
-	
-	while True:
-		resp = input("Save experiment data as " + experimentSaveFileStr + "? (y/n): ")
-		if (resp == 'y'):
-			print("Saved '" + experimentSaveFileStr + "' to current working directory.")
-			torch.save(experimentSaveDict, experimentSaveFileStr)
-			break
-		elif (resp == 'n'):
-			print("Exiting...")
-			break
-		else:
-			print("Invalid input.")
-
-
-################################################################################################################################
-
-# model = torch.nn.Sequential(inputResampler, wavefrontAberrator, ASM_Prop(init_distance=25*mm))
-_, pixSize = TransferMatrixProcessor._calculateMacropixelParameters(outputBoolMask)
-indsBlah = TransferMatrixProcessor._getMacropixelIndsFromBoolMask(outputBoolMask, pixSize, device=device)
-
-################################################################################################################################
-
 
 modelComponentSequence = getSequentialModelComponentSequence(model=model, recursive=False)
 addSequentialModelOutputHooks(model=model, recursive=False)

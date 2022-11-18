@@ -7,7 +7,7 @@ import copy
 import time
 
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
-
+import holotorch.utils.Memory_Utils as Memory_Utils
 from holotorch.utils.Field_Utils import applyFilterSpaceDomain
 
 
@@ -92,6 +92,7 @@ class TransferMatrixProcessor:
 		t0 = time.time()
 		t_last = t0
 		times = []
+		nTimeAvg = 8
 
 		for i in range(0, matrixInputLen, columnStep):
 			t1 = time.time()
@@ -99,22 +100,48 @@ class TransferMatrixProcessor:
 			t_last = t1
 			elapsedTime = t1 - t0
 
-			print("Percent Completion: %.3f%%\t|\t" % ((i/len(heightInds))*100), end="")
-			print("Columns processed: " + str(i) + "/" + str(len(heightInds)) + "\t|\t", end="")
-			print("Rate: ", end="")
-			if (len(times) == 1):
-				print("N/A\t\t|\t", end="")
-			else:
-				t_n = times[max(1, len(times) - 8):]
+			if (len(times) != 1):
+				t_n = times[max(1, len(times) - nTimeAvg):]
 				rate = (len(t_n) * columnStep) / sum(t_n)
 				est_time_completion = (matrixInputLen - i) / rate
-				print("%.3f sec/col\t|\t" % (1/rate), end="")
-			print("Elapsed time: %02d:%02d:%02d\t|\t" % (int(elapsedTime // 3600), int((elapsedTime % 3600) // 60), int(elapsedTime % 60)), end="")
-			print("ETC: ", end="")
+
+			printStr = f"|  Progress: {(i/len(heightInds))*100:>6.2f}% ({str(i):>4}/{str(len(heightInds)):<4} columns)"
+			printStr += f"  |  ETC: "
 			if (len(times) == 1):
-				print("N/A")
+				printStr += f"{'N/A':8}"
 			else:
-				print("%02d:%02d:%02d" % (int(est_time_completion // 3600), int((est_time_completion % 3600) // 60), int(est_time_completion % 60)))
+				printStr += f"{int(est_time_completion // 3600):02}:{int((est_time_completion % 3600) // 60):02}:{int(est_time_completion % 60):02}"
+			printStr += f"  |  Runtime: "
+			printStr += f"{int(elapsedTime // 3600):02}:{int((elapsedTime % 3600) // 60):02}:{int(elapsedTime % 60):02}"
+			printStr += f"  |  Rate: "
+			if (len(times) == 1):
+				printStr += f"{'N/A':29}"
+			else:
+				printStr += f"{rate:>5.2f} col/sec ({1/rate:>5.2f} sec/col)"
+			printStr += f"  |"
+			if (self._tempField.data.device.type == 'cuda'):
+				memStats = Memory_Utils.get_cuda_memory_stats(self._tempField.data.device)
+				allocCur = memStats['allocated_gb']
+				allocMax = memStats['allocated_max_gb']
+				reservedCur = memStats['reserved_gb']
+				reservedMax = memStats['reserved_max_gb']
+				totalMem = memStats['total_gb']
+				printStr += f"  GPU Mem: {{Cur: {allocCur:.2f}/{reservedCur:.2f}/{totalMem:.2f} GiB, Max: {allocMax:.2f}/{reservedMax:.2f}/{totalMem:.2f} GiB}}  |"
+			print(printStr)
+
+			# print("|    Progress: %.3f%%  " % ((i/len(heightInds))*100), end="")
+			# print("(" + str(i) + "/" + str(len(heightInds)) + " columns)\t|    ", end="")
+			# print("ETC: ", end="")
+			# if (len(times) == 1):
+			# 	print("N/A\t\t|    ", end="")
+			# else:
+			# 	print("%02d:%02d:%02d\t|    " % (int(est_time_completion // 3600), int((est_time_completion % 3600) // 60), int(est_time_completion % 60)), end="")
+			# print("Elapsed time: %02d:%02d:%02d\t|    " % (int(elapsedTime // 3600), int((elapsedTime % 3600) // 60), int(elapsedTime % 60)), end="")
+			# print("Rate: ", end="")
+			# if (len(times) == 1):
+			# 	print("N/A\t\t\t\t\t|", end="")
+			# else:
+			# 	print("%.3f col/sec  (%.3f sec/col)\t|" % (rate, 1/rate), end="")
 
 			self._tempField.data[... , :, :] = 0
 
@@ -252,7 +279,15 @@ class TransferMatrixProcessor:
 
 
 	@classmethod
-	def getModelInput(cls, macropixelVector : torch.Tensor, samplingBoolMask : torch.Tensor, fieldPrototype : ElectricField):
+	def _getModelInput_arg_checker(cls, macropixelVector : torch.Tensor, samplingBoolMask : torch.Tensor):
+		if (len(samplingBoolMask.shape) < 2):
+			raise Exception("Invalid shape for 'samplingBoolMask'.  Must have at least two dimensions.")
+		if (len(samplingBoolMask.shape) > 2):
+			raise Exception("Non-2D tensors are not supported for 'samplingBoolMask'.")
+
+
+	@classmethod
+	def getModelInputField(cls, macropixelVector : torch.Tensor, samplingBoolMask : torch.Tensor, fieldPrototype : ElectricField):
 		if (samplingBoolMask.shape[-2:] != fieldPrototype.data.shape[-2:]):
 			raise Exception("Size mismatch between 'samplingBoolMask' and 'fieldPrototype.data'.")
 
@@ -261,15 +296,33 @@ class TransferMatrixProcessor:
 
 		if ((len(fieldIn.data.shape) - 1) != len(macropixelVector.shape)):
 			numExtraDims = len(fieldIn.data.shape) - (len(macropixelVector.shape) + 1)
+			# Not checking for cases where the non-extra dimensions are mismatched.
+			if (numExtraDims < 0):
+				raise Exception("Too many dimensions in 'macropixelVector'.")
 			if (fieldIn.data.shape[0:numExtraDims] != torch.Size([1] * numExtraDims)):
 				raise Exception("Could not expand 'macropixelVector'.")
 			newShape = ([1] * numExtraDims) + ([-1] * len(macropixelVector.shape))
 			macropixelVector = macropixelVector.expand(newShape)
 
-		_, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(samplingBoolMask)
-		macropixelConvolutionMask = TransferMatrixProcessor._getMacropixelConvolutionMask(macropixelSize=macropixelSize, height=fieldIn.shape[-2], width=fieldIn.shape[-1], device=fieldIn.data.device)
-		
-		fieldIn.data[..., samplingBoolMask] = macropixelVector
-		fieldIn.data[...] = applyFilterSpaceDomain(macropixelConvolutionMask, fieldIn.data)
+		# _, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(samplingBoolMask)
+		# macropixelConvolutionMask = TransferMatrixProcessor._getMacropixelConvolutionMask(macropixelSize=macropixelSize, height=samplingBoolMask.shape[-2], width=samplingBoolMask.shape[-1], device=fieldIn.data.device)
+		# fieldIn.data[..., samplingBoolMask] = macropixelVector
+		# fieldIn.data[...] = applyFilterSpaceDomain(macropixelConvolutionMask, fieldIn.data)
 
+		fieldIn.data[...] = TransferMatrixProcessor.getModelInputTensor(macropixelVector, samplingBoolMask)
 		return fieldIn
+
+
+	@classmethod
+	def getModelInputTensor(cls, macropixelVector : torch.Tensor, samplingBoolMask : torch.Tensor):
+		TransferMatrixProcessor._getModelInput_arg_checker(macropixelVector, samplingBoolMask)
+
+		_, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(samplingBoolMask)
+		macropixelConvolutionMask = TransferMatrixProcessor._getMacropixelConvolutionMask(macropixelSize=macropixelSize, height=samplingBoolMask.shape[-2], width=samplingBoolMask.shape[-1], device=macropixelVector.device)
+		
+		# samplingBoolMask should be 2D because _getModelInput_arg_checker enforces that.
+		inputTensor = torch.zeros(macropixelVector.shape[:-1] + samplingBoolMask.shape[-2:], device=macropixelVector.device, dtype=macropixelVector.dtype)
+		inputTensor[..., samplingBoolMask] = macropixelVector
+		inputTensor[...] = applyFilterSpaceDomain(macropixelConvolutionMask, inputTensor)
+		
+		return inputTensor

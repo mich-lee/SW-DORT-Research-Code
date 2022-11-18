@@ -11,9 +11,9 @@ sys.path.append("holotorch-lib/holotorch")
 
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
 from holotorch.Optical_Components.CGH_Component import CGH_Component
-from holotorch.utils.Dimensions import HW, TensorDimension
+from holotorch.utils.Dimensions import HW, BTPCHW, TensorDimension
 from holotorch.utils.Enumerators import *
-from holotorch.utils.Helper_Functions import generateGrid
+from holotorch.utils.Helper_Functions import generateGrid, generateGrid_MultiRes
 from holotorch.Optical_Components.SimpleMask import SimpleMask
 
 
@@ -54,15 +54,12 @@ class ScattererModel(CGH_Component):
 			self.scatterers.append(s)
 
 
-	def updateGridsAndMask(self, field):
-		if (field.spacing.data_tensor.numel() != 2):
-			raise Exception("'ScattererModel' class does not support multiple spacings.")
-
+	def updateGridsAndMask(self, field : ElectricField):
 		resolution = tuple(field.data.shape[-2:])
-		grid_spacing = tuple(field.spacing.data_tensor.squeeze().tolist())		# Technically, it's not necessary to convert to a tuple here---a list can work too.
+		grid_spacing = field.spacing.data_tensor		# Technically, it's not necessary to convert to a tuple here---a list can work too.
 
 		if self._gridMaskInitFlag:
-			if ((resolution == self.resolution) and (grid_spacing == self.grid_spacing)):
+			if ((resolution == self.resolution) and (torch.equal(grid_spacing, self.grid_spacing))):
 				# Same resolution and spacing as before so no need to initialize new grids and a new mask
 				return
 		else:
@@ -71,9 +68,15 @@ class ScattererModel(CGH_Component):
 		self.resolution = resolution
 		self.grid_spacing = grid_spacing
 
-		[self.xGrid, self.yGrid] = generateGrid(self.resolution, self.grid_spacing[0], self.grid_spacing[1], centerGrids=True, centerCoordsAroundZero=False)
+		spacingShapeBTPCHW = field.spacing.tensor_dimension.get_new_shape(BTPCHW)
+		gridShape = spacingShapeBTPCHW[0:4] + field.data.shape[-2:]
+
+		[self.xGrid, self.yGrid] = generateGrid_MultiRes(self.resolution, grid_spacing, centerGrids=True, centerCoordsAroundZero=False, device=field.data.device)
+		self.xGrid = self.xGrid.view(gridShape)
+		self.yGrid = self.yGrid.view(gridShape)
+
 		self.scatterer_mask = SimpleMask(
-											tensor_dimension=HW(self.resolution[0], self.resolution[1]),
+											tensor_dimension=BTPCHW(gridShape[0], gridShape[1], gridShape[2], gridShape[3], gridShape[4], gridShape[5]),
 											init_type=INIT_TYPE.ZEROS,
 											mask_model_type=MASK_MODEL_TYPE.COMPLEX,
 											mask_forward_type=MASK_FORWARD_TYPE.MULTIPLICATIVE,
