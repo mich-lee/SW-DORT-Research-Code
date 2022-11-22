@@ -84,13 +84,13 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 
 
 syntheticWavelength = 0.1*mm
-lambda1 = 550*nm
+lambda1 = 854*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (384, 384)
+inputRes = (1024, 1024)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
@@ -106,6 +106,10 @@ outputSpacing = 1.85*um
 inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
 outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
 
+pixelResolution, pixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
+dx_pixel = pixelSize[0] * inputSpacing
+dy_pixel = pixelSize[1] * inputSpacing
+
 centerXInd = int(np.floor((inputRes[0] - 1) / 2))
 centerYInd = int(np.floor((inputRes[1] - 1) / 2))
 
@@ -116,9 +120,9 @@ elif isinstance(wavelengths, list):
 spacingContainer = SpacingContainer(spacing=inputSpacing)
 
 
-fieldData = torch.zeros(4,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device)
+fieldData = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],dtype=torch.complex64,device=device)
 # fieldData[...,centerXInd:centerXInd+1,centerYInd:centerYInd+1] = 1
-fieldData[... , 0:12, 0:12] = 1
+# fieldData[... , 0:2, 0:2] = 1
 # fieldData[...,centerXInd-7:centerXInd+8,centerYInd-7:centerYInd+8] = 1
 # fieldData[...,centerXInd-3:centerXInd+4,centerYInd-3:centerYInd+4] = 1
 # fieldData[...,:,:] = 1
@@ -128,11 +132,15 @@ fieldData[... , 0:12, 0:12] = 1
 # fieldData[...,-1,-1] = 1
 # fieldData[...,:,:] = torch.exp(1j*10*(2*np.pi/res[0])*torch.tensor(range(res[0])).repeat([res[1],1]))
 # fieldData = torch.rand(fieldData.shape, device=device)
-fieldData = fieldData + 0j
+# fieldData = fieldData + 0j
 
 fieldIn = ElectricField(data=fieldData, wavelengths=wavelengthContainer, spacing=spacingContainer)
 fieldIn.wavelengths.to(device=device)
 fieldIn.spacing.to(device=device)
+
+xGridIn, yGridIn = fieldIn.get_coordinate_grid()
+# fieldIn.data[...] = TransferMatrixProcessor.getModelInputTensor(torch.exp(1j * (2*np.pi/(0.5*mm)) * xGridIn)[... , inputBoolMask], inputBoolMask)
+fieldIn.data[...] = torch.exp(1j * 0.1 * (2*np.pi/inputSpacing) * xGridIn)
 
 printSimulationSize(inputRes, inputSpacing, 'Simulation Input\t|\t')
 printSimulationSize(intermediateRes, intermediateSpacing, 'Intermediate Calcs\t|\t')
@@ -178,7 +186,8 @@ inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=in
 # asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
 # # asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
 # # asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
-# thinLens = Thin_Lens(focal_length=50*mm)
+asmProp1 = ASM_Prop(init_distance=50*mm)
+thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
@@ -186,11 +195,20 @@ outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputR
 
 model = torch.nn.Sequential	(
 								inputResampler,
-								FT_Lens(focal_length=50*mm),
+								asmProp1,
+								thinLens,
+								asmProp1,
 								scattererModel,
-								# FT_Lens(focal_length=50*mm),
 								outputResampler
 							)
+
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								FT_Lens(focal_length=50*mm),
+# 								scattererModel,
+# 								# FT_Lens(focal_length=50*mm),
+# 								outputResampler
+# 							)
 
 # model = torch.nn.Sequential	(
 # 								inputResampler,
