@@ -83,20 +83,20 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.1*mm
-lambda1 = 550*nm
+syntheticWavelength = 0.05*mm
+lambda1 = 854*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (384, 384)
+inputRes = (256, 256)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
 intermediateSpacing = inputSpacing / 2
 
-outputRes = (3036, 3036)
+outputRes = (64, 64)
 outputSpacing = 1.85*um
 
 
@@ -170,93 +170,66 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 do_ffts_inplace = True
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
-asmProp1 = ASM_Prop(init_distance=275/3*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
-thinLens = Thin_Lens(focal_length=50*mm)
+# asmProp1 = ASM_Prop(init_distance=275/3*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
+# thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-# model = torch.nn.Sequential	(
-# 								inputResampler,
-# 								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=275/3*mm, device=device),
-# 								scattererModel,
-# 								Ideal_Imaging_Lens(focal_length=50*mm, object_dist=110*mm, device=device),
-# 								outputResampler
-# 							)
-
+asmProp1 = ASM_Prop(init_distance=75*mm, do_ffts_inplace=do_ffts_inplace)
+thinLens = Thin_Lens(focal_length=75*mm)
+# resampler1 = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=2*um, outputPixel_dy=2*um, device=device)
 model = torch.nn.Sequential	(
 								inputResampler,
-								# memoryReclaimer,
+								# FT_Lens(focal_length=75*mm),
+								# Radial_Optical_Aperture(aperture_radius=2.5*mm),
+								# inputResampler,
+								# # Ideal_Imaging_Lens(focal_length=75*mm, object_dist=125*mm, device=device),
 								asmProp1,
 								thinLens,
-								asmProp2,
-								# wavefrontAberrator,
-								# asmProp3,
+								asmProp1,
 								scattererModel,
-								# asmProp3,
-								# wavefrontAberratorReverse,
-								asmProp2,
-								thinLens,
-								asmProp1,
-								# memoryReclaimer,
-								outputResampler,
-								# memoryReclaimer
+								Ideal_Imaging_Lens(focal_length=4*mm, object_dist=128*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
+								outputResampler
 							)
 
-
-# asmProp1 = ASM_Prop(init_distance=33.333333333333*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp2 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp3 = ASM_Prop(init_distance=75*mm, do_ffts_inplace=do_ffts_inplace)
-# # asmProp3 = ASM_Prop(init_distance=((75-0.2)/2)*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp1 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
 # thinLens = Thin_Lens(focal_length=50*mm)
 # model = torch.nn.Sequential	(
 # 								inputResampler,
-# 								memoryReclaimer,
 # 								asmProp1,
 # 								thinLens,
-# 								asmProp2,
-# 								thinLens,
-# 								# asmProp3,
-# 								memoryReclaimer,
-# 								# wavefrontAberrator,
-# 								asmProp3,
+# 								asmProp1,
 # 								scattererModel,
-# 								asmProp3,
-# 								# wavefrontAberratorReverse,
-# 								memoryReclaimer,
-# 								# asmProp3,
-# 								thinLens,
-# 								asmProp2,
-# 								thinLens,
-# 								asmProp1,
-# 								memoryReclaimer,
 # 								outputResampler
 # 							)
 
-
-# asmProp1 = ASM_Prop(init_distance=12.5*mm)
-# asmProp2 = ASM_Prop(init_distance=25*mm)
-# asmProp3 = ASM_Prop(init_distance=50*mm)
-# thinLens = Thin_Lens(focal_length=25*mm)
+# asmProp1 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
 # model = torch.nn.Sequential	(
 # 								inputResampler,
-# 								memoryReclaimer,
+# 								# memoryReclaimer,
 # 								asmProp1,
-# 								thinLens,
-# 								asmProp2,
-# 								thinLens,
-# 								asmProp3,
 # 								scattererModel,
-# 								asmProp3,
-# 								thinLens,
-# 								asmProp2,
-# 								thinLens,
 # 								asmProp1,
-# 								outputResampler
+# 								# memoryReclaimer,
+# 								outputResampler,
+# 								# memoryReclaimer
+# 							)
+
+# asmProp1 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
+# model = torch.nn.Sequential	(
+# 								inputResampler,
+# 								# memoryReclaimer,
+# 								asmProp1,
+# 								scattererModel,
+# 								asmProp1,
+# 								# memoryReclaimer,
+# 								outputResampler,
+# 								# memoryReclaimer
 # 							)
 
 
@@ -292,8 +265,8 @@ if True:
 	while True:
 		resp = input("Save experiment data as " + experimentSaveFileStr + "? (y/n): ")
 		if (resp == 'y'):
-			print("Saved '" + experimentSaveFileStr + "' to current working directory.")
 			torch.save(experimentSaveDict, experimentSaveFileStr)
+			print("Saved '" + experimentSaveFileStr + "' to current working directory.")
 			break
 		elif (resp == 'n'):
 			print("Exiting...")

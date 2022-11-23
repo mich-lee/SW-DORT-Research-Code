@@ -99,6 +99,7 @@ def plotModelOutputSequence(outputs : list,
 							flag_colorbar: bool = True,
 							flag_axis: bool = True,
 							rescale_factor : float = 1,
+							rescale_mode : str = None,
 							plot_xlims : tuple = None,
 							plot_ylims : tuple = None,
 						):
@@ -146,13 +147,13 @@ def plotModelOutputSequence(outputs : list,
 			titleStrMag = titleStrL1A + " | Magnitude ]" + titleStrL2A
 			titleStrPhase = titleStrL1A + " | Phase ]" + titleStrL2A
 		plt.subplot(2, numCols, curSubplotColInd)
-		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.MAGNITUDE, title=titleStrMag, rescale_factor=rescale_factor, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
+		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.MAGNITUDE, title=titleStrMag, rescale_factor=rescale_factor, rescale_mode=rescale_mode, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
 		if plot_xlims is not None:
 			plt.xlim(plot_xlims)
 		if plot_ylims is not None:
 			plt.ylim(plot_ylims)
 		plt.subplot(2, numCols, curSubplotColInd + numCols)
-		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.PHASE, title=titleStrPhase, rescale_factor=rescale_factor, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
+		tempOutput.visualize(plot_type=ENUM_PLOT_TYPE.PHASE, title=titleStrPhase, rescale_factor=rescale_factor, rescale_mode=rescale_mode, flag_colorbar=flag_colorbar, flag_axis=flag_axis)
 		if plot_xlims is not None:
 			plt.xlim(plot_xlims)
 		if plot_ylims is not None:

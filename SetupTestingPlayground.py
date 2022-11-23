@@ -25,6 +25,7 @@ from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
 from holotorch.Optical_Components.FT_Lens import FT_Lens
 from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 # from holotorch.Optical_Components.SimpleMask import SimpleMask
+from holotorch.Optical_Components.Radial_Optical_Aperture import Radial_Optical_Aperture
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 from holotorch.Optical_Setups.Ideal_Imaging_Lens import Ideal_Imaging_Lens
@@ -90,13 +91,13 @@ lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (1024, 1024)
+inputRes = (256, 256)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
 intermediateSpacing = inputSpacing / 2
 
-outputRes = (3036, 3036)
+outputRes = (64, 64)
 outputSpacing = 1.85*um
 
 
@@ -140,7 +141,18 @@ fieldIn.spacing.to(device=device)
 
 xGridIn, yGridIn = fieldIn.get_coordinate_grid()
 # fieldIn.data[...] = TransferMatrixProcessor.getModelInputTensor(torch.exp(1j * (2*np.pi/(0.5*mm)) * xGridIn)[... , inputBoolMask], inputBoolMask)
-fieldIn.data[...] = torch.exp(1j * 0.1 * (2*np.pi/inputSpacing) * xGridIn)
+# fieldIn.data[...] = torch.exp(1j * 0.1 * (2*np.pi/inputSpacing) * xGridIn)
+# fieldIn.data[...] = torch.exp(1j * (1/2)*(1/6)* (2*np.pi/inputSpacing) * torch.floor(xGridIn / (inputSpacing*6)) * (inputSpacing*6))
+
+macropixelRes, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
+vecIn = torch.zeros(macropixelRes, dtype=torch.complex64, device=device)
+# vecIn[0,0] = 1
+vecIn[...] = torch.exp(1j * 2 * np.pi * 5 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1]))
+vecIn[...] = vecIn + torch.exp(1j * 2 * np.pi * 6 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1])).to(device=device)
+
+
+vecIn = vecIn.view(1,1,1,1,macropixelRes[0]*macropixelRes[1])
+fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=fieldIn)
 
 printSimulationSize(inputRes, inputSpacing, 'Simulation Input\t|\t')
 printSimulationSize(intermediateRes, intermediateSpacing, 'Intermediate Calcs\t|\t')
@@ -186,19 +198,27 @@ inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=in
 # asmProp2 = ASM_Prop(init_distance=110*mm, do_ffts_inplace=do_ffts_inplace)
 # # asmProp2 = ASM_Prop(init_distance=(110-20)*mm, do_ffts_inplace=do_ffts_inplace)
 # # asmProp3 = ASM_Prop(init_distance=20*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp1 = ASM_Prop(init_distance=50*mm)
-thinLens = Thin_Lens(focal_length=50*mm)
+# asmProp1 = ASM_Prop(init_distance=50*mm)
+# thinLens = Thin_Lens(focal_length=50*mm)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
+asmProp1 = ASM_Prop(init_distance=75*mm)
+thinLens = Thin_Lens(focal_length=75*mm)
+# resampler1 = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=2*um, outputPixel_dy=2*um, device=device)
 model = torch.nn.Sequential	(
 								inputResampler,
+								# FT_Lens(focal_length=75*mm),
+								# Radial_Optical_Aperture(aperture_radius=2.5*mm),
+								# inputResampler,
+								# # Ideal_Imaging_Lens(focal_length=75*mm, object_dist=125*mm, device=device),
 								asmProp1,
 								thinLens,
 								asmProp1,
 								scattererModel,
+								Ideal_Imaging_Lens(focal_length=4*mm, object_dist=128*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
 								outputResampler
 							)
 
@@ -298,6 +318,6 @@ fieldOut = model(fieldIn)
 outputs = getSequentialModelOutputSequence(model=model, recursive=False)
 
 # plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-0.075,0.075), plot_ylims=(-0.075,0.075))
-plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0, rescale_factor=0.25)
+plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0)#, rescale_factor=0.25)
 
 pass

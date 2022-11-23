@@ -87,7 +87,10 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_202210192329.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-10-27_19h14m38s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-6_22h18m58s.pt', map_location=device)
-loadedData = torch.load('DATA/Experiment_2022-11-16_20h46m21s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2022-11-16_20h46m21s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
+loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
+# loadedData = torch.load('DATA/', map_location=device)
 
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
@@ -115,7 +118,8 @@ w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 # tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
 tempResampler = Field_Resampler(outputHeight=8192, outputWidth=8192, outputPixel_dx=6.4*um, outputPixel_dy=6.4*um, device=device)
 # m1 = model[0:4]
-m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
+# m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
+m1 = model[0:3]
 
 singVecNum = 0
 vecIn = V[... , :, singVecNum]
@@ -133,6 +137,7 @@ synthField = ElectricField(
 synthField.wavelengths.to(device)
 synthField.spacing.to(device)
 
+# fieldOut = model[3](synthField)
 fieldOut = model[3](synthField)
 
 plt.clf()

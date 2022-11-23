@@ -27,13 +27,23 @@ class Scatterer:
 
 class ScattererModel(CGH_Component):
 	def __init__(	self,
-					scatterers : Union[list, tuple, Scatterer] = None
+					scatterers : Union[list, tuple, Scatterer] = None,
+					reducePickledSize : bool = True
 				) -> None:
 
 		super().__init__()
+		self._reducePickledSize = reducePickledSize
+
 		self.initialize_scatterer_list(scatterers)
 		self._gridMaskInitFlag = False
 		
+
+	def __getstate__(self):
+		if self._reducePickledSize:
+			return super()._getreducedstate(fieldsSetToNone=['scatterer_mask'])
+		else:
+			return super().__getstate__()
+
 
 	def initialize_scatterer_list(self, scatterers):
 		self.scatterers = []
@@ -57,6 +67,14 @@ class ScattererModel(CGH_Component):
 	def updateGridsAndMask(self, field : ElectricField):
 		resolution = tuple(field.data.shape[-2:])
 		grid_spacing = field.spacing.data_tensor		# Technically, it's not necessary to convert to a tuple here---a list can work too.
+
+		# The 'scatterer_mask' field might get removed during pickling.
+		# Want to make the code rebuild the grid in that case.
+		if hasattr(self, 'scatterer_mask'):
+			if (self.scatterer_mask is None):
+				self._gridMaskInitFlag = False
+		else:
+			self._gridMaskInitFlag = False
 
 		if self._gridMaskInitFlag:
 			if ((resolution == self.resolution) and (torch.equal(grid_spacing, self.grid_spacing))):
