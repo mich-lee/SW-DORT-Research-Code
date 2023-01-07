@@ -89,12 +89,16 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_2022-11-6_22h18m58s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-16_20h46m21s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
-loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
+# loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
+loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
 # loadedData = torch.load('DATA/', map_location=device)
 
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
 V = Vh.conj().transpose(-2, -1)
+
+U, S, V = TransferMatrixProcessor.demixEigenstructure(U, S, V, 'V')
+Vh = V.conj().transpose(-2, -1)
 
 model = loadedData['Model']
 inputBoolMask = loadedData['Input_Bool_Mask']
@@ -115,33 +119,38 @@ w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 	# macropixelShape[253:261,253:261] = 1
 	# fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
 
-# tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
-tempResampler = Field_Resampler(outputHeight=8192, outputWidth=8192, outputPixel_dx=6.4*um, outputPixel_dy=6.4*um, device=device)
-# m1 = model[0:4]
-# m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
+# # tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
+# tempResampler = Field_Resampler(outputHeight=8192, outputWidth=8192, outputPixel_dx=6.4*um, outputPixel_dy=6.4*um, device=device)
+
+# # m1 = model[0:4]
+# # m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
 m1 = model[0:3]
 
-singVecNum = 0
-vecIn = V[... , :, singVecNum]
-fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
+for singVecNum in range(10):
+	# singVecNum = 0
+	vecIn = V[... , :, singVecNum]
+	fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
 
-o1 = m1(fieldIn)
+	o1 = m1(fieldIn)
+	
+	# Resample to force spacing to be the same for all dimensions (B, T, P, and C)
+	o1 = model[0](o1)
 
-synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
-synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()
-synthField = ElectricField(
-							data = synthFieldData,
-							wavelengths = float(fieldIn.wavelengths.data_tensor[0]*fieldIn.wavelengths.data_tensor[1]/(fieldIn.wavelengths.data_tensor[1]-fieldIn.wavelengths.data_tensor[0])),
-							spacing = float(o1.spacing.data_tensor[...,0].squeeze())
-						)
-synthField.wavelengths.to(device)
-synthField.spacing.to(device)
+	synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
+	synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()
+	synthField = ElectricField(
+								data = synthFieldData,
+								wavelengths = float(fieldIn.wavelengths.data_tensor[0]*fieldIn.wavelengths.data_tensor[1]/(fieldIn.wavelengths.data_tensor[1]-fieldIn.wavelengths.data_tensor[0])),
+								spacing = float(o1.spacing.data_tensor[...,0].squeeze())
+							)
+	synthField.wavelengths.to(device)
+	synthField.spacing.to(device)
 
-# fieldOut = model[3](synthField)
-fieldOut = model[3](synthField)
+	fieldOut = model[3](synthField)
 
-plt.clf()
-fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+	plt.figure(singVecNum + 1)
+	plt.clf()
+	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 
 pass
 

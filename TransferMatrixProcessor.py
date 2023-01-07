@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import copy
 import time
 
+import holotorch.utils.Dimensions as Dimensions
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
+from holotorch.Spectra.WavelengthContainer import WavelengthContainer
 import holotorch.utils.Memory_Utils as Memory_Utils
 from holotorch.utils.Field_Utils import applyFilterSpaceDomain
 
@@ -326,3 +328,68 @@ class TransferMatrixProcessor:
 		inputTensor[...] = applyFilterSpaceDomain(macropixelConvolutionMask, inputTensor)
 		
 		return inputTensor
+
+
+	# Purpose:
+	#	Demixes the eigenstructure.
+	#
+	# Explanation:
+	#	When doing DORT (i.e. taking the SVD of the transfer matrix) over multiple wavelengths/frequencies, it is not guaranteed
+	#	that the i-th singular vector for each wavelength/frequency will correspond to the same scatterer.  This is problematic when trying
+	#	to use multiple wavelengths/frequencies.  However, for nearby wavelengths/frequencies, singular vectors belonging to the same scatterer
+	#	will be highly correlated (inner product between such vectors will be close to 1).  Thus, by looking at correlations/inner products,
+	#	one can ascertain which singular vectors belong to which scatterers.
+	#
+	#	For more information on eigenstructure demixing, one can consult Dr. Sun K. Hong's work on the subject.
+	#	The relevant paper is titled "Effects of target resonances on ultrawideband-DORT".
+	#
+	# 'U', 'S', and 'V' are the U, S, and V matrices from SVD respectively.
+	# The columns of 'U' and 'V' are the left- and right-singular vectors respectively
+	# 'matrixToDemix' decides whether the left- or right-singular vectors will be correlated/inner-producted together
+	#	matrixToDemix = 'U' --> demix with the left-singular vectors
+	#	matrixToDemix = 'V' --> demix with the right-singular vectors
+	@classmethod
+	def demixEigenstructure(cls, U : torch.Tensor, S : torch.Tensor, V : torch.Tensor, matrixToDemix : str = 'V'):
+		# Input checking
+		if (U.shape[0:4] != V.shape[0:4]):
+			raise Exception("'U' and 'V' matrices have incompatible dimensions.  They should both be the same size in the B, T, P, and C dimensions.")
+		if (U.shape[-2] != U.shape[-1]):
+			raise Exception("'U' should be a square matrix.")
+		if (V.shape[-2] != V.shape[-1]):
+			raise Exception("'V' should be a square matrix.")
+		if (U.shape[-1] != S.shape[-1]) and (V.shape[-2] != S.shape[-1]):
+			raise Exception("Number of singular values does not match the dimensions of 'U' and/or 'V'.")
+		if (matrixToDemix == 'U'):
+			singVecs = U
+		elif (matrixToDemix == 'V'):
+			singVecs = V
+		else:
+			raise Exception("Invalid option for 'matrixToDemix'.  Should either be 'U' or 'V'.")
+		
+		# Getting wavelength dimension index
+		wavelengthDimIndex = torch.arange(4)[torch.tensor(singVecs.shape[0:4]) != 1]
+		if (len(wavelengthDimIndex) == 0):
+			raise Exception("Error: there only appears to be one wavelength.  No need to demix a single wavelength.")
+		elif (len(wavelengthDimIndex) != 1):
+			raise Exception("The case where wavelengths vary along more than one dimension is not implemented.")
+		if (singVecs.shape[wavelengthDimIndex] != 2):
+			raise Exception("Demixing more than two wavelengths has not been implemented.")
+		
+		# 'singVecs' contains the singular vector matrices that will be used for demixing
+		singVecs = singVecs.squeeze()	# Should be an N x height x width tensor (where N is the number of wavelengths)
+
+		# Cross-correlations/inner products
+		corrs = torch.matmul(singVecs.conj().transpose(-2,-1)[1,:,:], singVecs[0,:,:]).abs()
+		_, secondWavelengthInds = torch.max(corrs, 0)
+
+		# Demixing
+		numSingVals = S.shape[-1]
+		newU = U.clone()
+		newS = S.clone()
+		newV = V.clone()
+		for i in range(numSingVals):
+			newU[... , 1, :, i] = U[..., 1, :, secondWavelengthInds[i]]
+			newS[... , 1, i] = S[..., 1, secondWavelengthInds[i]]
+			newV[... , 1, :, i] = V[..., 1, :, secondWavelengthInds[i]]
+
+		return newU, newS, newV
