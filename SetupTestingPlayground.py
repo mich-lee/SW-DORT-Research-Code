@@ -85,7 +85,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.25*mm
+syntheticWavelength = 0.1*mm
 lambda1 = 1400*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
@@ -96,7 +96,7 @@ inputRes = (256, 256)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
-intermediateSpacing = 3.2e-6#inputSpacing / 2
+intermediateSpacing = 3.2e-6 #inputSpacing / 2
 
 outputRes = (64, 64)
 outputSpacing = 1.85*um
@@ -142,7 +142,7 @@ vecIn[...] = 0
 # vecIn[16,-16] = 1
 # vecIn[-16,16] = 1
 vecIn[2, 2] = 1
-# vecIn[-2, 2] = 1
+vecIn[-2, -2] = 1
 # vecIn[...] = torch.randn(vecIn.shape)
 # vecIn[...] = 1
 
@@ -169,7 +169,10 @@ scattererList = [
 					# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
 					# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
+					# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
+
+					Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
+					Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
 				]
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
@@ -181,7 +184,7 @@ outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputR
 screenDist = 0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
-														maxThickness = 0*200*um,
+														maxThickness = 200*um,
 														n_screen = 1.52,
 														generateBidirectional = True,
 														resolution = intermediateRes,
@@ -194,28 +197,32 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 
 
-resampler1 = Field_Resampler(outputHeight=wavefrontAberratorGen.resolution[0], outputWidth=wavefrontAberratorGen.resolution[1], outputPixel_dx=wavefrontAberratorGen.elementSpacings[0], outputPixel_dy=wavefrontAberratorGen.elementSpacings[1], device=device)
+# resampler1 = Field_Resampler(outputHeight=wavefrontAberratorGen.resolution[0], outputWidth=wavefrontAberratorGen.resolution[1], outputPixel_dx=wavefrontAberratorGen.elementSpacings[0], outputPixel_dy=wavefrontAberratorGen.elementSpacings[1], device=device)
 thinLens1 = Thin_Lens(focal_length=25*mm)
-# asmProp1 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 asmProp1 = ASM_Prop(init_distance=80*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=36*mm, do_ffts_inplace=do_ffts_inplace)
+# asmProp2 = ASM_Prop(init_distance=35*mm, do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=(35*mm - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
 								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=31*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
+								Ideal_Imaging_Lens(focal_length=25*mm, object_dist=40*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
 								asmProp1,
 								Radial_Optical_Aperture(aperture_radius=6*mm),
 								thinLens1,
 								asmProp2,
 								# # resampler1,
-								# # wavefrontAberrator,
-								# scattererModel,
-								# # wavefrontAberratorReverse,
-								# asmProp1,
-								# thinLens1,
-								# Radial_Optical_Aperture(aperture_radius=5*mm),
-								# asmProp1,
-								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=275*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
-								# outputResampler
+								wavefrontAberrator,
+								asmProp3,
+								scattererModel,
+								asmProp3,
+								wavefrontAberratorReverse,
+								asmProp2,
+								thinLens1,
+								Radial_Optical_Aperture(aperture_radius=5*mm),
+								asmProp1,
+								Ideal_Imaging_Lens(focal_length=10*mm, object_dist=250*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
+								outputResampler
 							)
 
 
@@ -229,5 +236,25 @@ outputs = getSequentialModelOutputSequence(model=model, recursive=False)
 # plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-0.075,0.075), plot_ylims=(-0.075,0.075))
 # plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0)#, rescale_factor=0.25)
 plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0, rescale_factor=0.25)
+
+
+
+
+o1 = outputs[4]
+synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
+synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()
+synthField = ElectricField(
+							data = synthFieldData,
+							wavelengths = float(fieldIn.wavelengths.data_tensor[0]*fieldIn.wavelengths.data_tensor[1]/(fieldIn.wavelengths.data_tensor[1]-fieldIn.wavelengths.data_tensor[0])),
+							spacing = float(o1.spacing.data_tensor[...,0].squeeze())
+						)
+synthField.wavelengths.to(device)
+synthField.spacing.to(device)
+
+fieldOutSynth = model[4](synthField)
+
+plt.figure(10)
+plt.clf()
+fieldOutSynth.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 
 pass
