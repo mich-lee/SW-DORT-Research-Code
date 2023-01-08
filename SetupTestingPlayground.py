@@ -92,11 +92,11 @@ lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (64, 64)
+inputRes = (256, 256)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
-intermediateSpacing = inputSpacing / 2
+intermediateSpacing = 3.2e-6#inputSpacing / 2
 
 outputRes = (64, 64)
 outputSpacing = 1.85*um
@@ -129,12 +129,20 @@ fieldIn.spacing.to(device=device)
 
 macropixelRes, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
 vecIn = torch.zeros(macropixelRes, dtype=torch.complex64, device=device)
-vecIn[...] = torch.exp(1j * 2 * np.pi * 5 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1]))
-vecIn[...] = vecIn + torch.exp(1j * 2 * np.pi * 6 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1])).to(device=device)
+# vecIn[...] = torch.exp(1j * 2 * np.pi * 30 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1]))
+# vecIn[...] = torch.exp(1j * 2 * np.pi * 5 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1]))
+# vecIn[...] = vecIn + torch.exp(1j * 2 * np.pi * 6 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1])).to(device=device)
+# vecIn[...] = ((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1]) % 2) == 0) * 2 * (1+0j) - 1
+# vecIn[...] = torch.exp(1j * (2*np.pi/lambda1) * torch.sqrt((((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1]) % 64) - 31.5) * inputSpacing) ** 2 + (40*mm)**2))
 
 vecIn[...] = 0
 # vecIn[0,0] = 1
-vecIn[32,32] = 1
+# vecIn[32,32] = 1
+# vecIn[-1,-1] = 1
+# vecIn[16,-16] = 1
+# vecIn[-16,16] = 1
+vecIn[2, 2] = 1
+# vecIn[-2, 2] = 1
 # vecIn[...] = torch.randn(vecIn.shape)
 # vecIn[...] = 1
 
@@ -187,27 +195,27 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 
 resampler1 = Field_Resampler(outputHeight=wavefrontAberratorGen.resolution[0], outputWidth=wavefrontAberratorGen.resolution[1], outputPixel_dx=wavefrontAberratorGen.elementSpacings[0], outputPixel_dy=wavefrontAberratorGen.elementSpacings[1], device=device)
-thinLens1 = Thin_Lens(focal_length=40*mm)
+thinLens1 = Thin_Lens(focal_length=25*mm)
 # asmProp1 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
-asmProp1 = ASM_Prop(init_distance=thinLens1.focal_length, do_ffts_inplace=do_ffts_inplace)
+asmProp1 = ASM_Prop(init_distance=80*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=36*mm, do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
-								# Ideal_Imaging_Lens(focal_length=10*mm, object_dist=100*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
-								# Four_F_system(focallength_1=10*mm, focallength_2=50*mm, aperture_radius=50.8*mm, flag_is_learnable=False),
+								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=31*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
 								asmProp1,
-								Radial_Optical_Aperture(aperture_radius=5*mm),
+								Radial_Optical_Aperture(aperture_radius=6*mm),
 								thinLens1,
-								asmProp1,
+								asmProp2,
 								# # resampler1,
 								# # wavefrontAberrator,
-								scattererModel,
-								# wavefrontAberratorReverse,
-								asmProp1,
-								thinLens1,
-								Radial_Optical_Aperture(aperture_radius=5*mm),
-								asmProp1,
-								Ideal_Imaging_Lens(focal_length=25*mm, object_dist=275*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
-								outputResampler
+								# scattererModel,
+								# # wavefrontAberratorReverse,
+								# asmProp1,
+								# thinLens1,
+								# Radial_Optical_Aperture(aperture_radius=5*mm),
+								# asmProp1,
+								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=275*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
+								# outputResampler
 							)
 
 
