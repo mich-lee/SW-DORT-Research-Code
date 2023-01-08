@@ -90,8 +90,8 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_2022-11-16_20h46m21s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
-loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
-# loadedData = torch.load('DATA/', map_location=device)
+# loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
+loadedData = torch.load('DATA/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
 
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
@@ -124,7 +124,7 @@ w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 
 # # m1 = model[0:4]
 # # m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
-m1 = model[0:3]
+m1 = model[0:4]
 
 for singVecNum in range(10):
 	# singVecNum = 0
@@ -134,7 +134,7 @@ for singVecNum in range(10):
 	o1 = m1(fieldIn)
 	
 	# Resample to force spacing to be the same for all dimensions (B, T, P, and C)
-	o1 = model[0](o1)
+	# o1 = model[0](o1)
 
 	synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
 	synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()

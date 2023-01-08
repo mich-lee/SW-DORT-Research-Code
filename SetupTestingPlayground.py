@@ -186,9 +186,9 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 
 
-# asmProp1 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 resampler1 = Field_Resampler(outputHeight=wavefrontAberratorGen.resolution[0], outputWidth=wavefrontAberratorGen.resolution[1], outputPixel_dx=wavefrontAberratorGen.elementSpacings[0], outputPixel_dy=wavefrontAberratorGen.elementSpacings[1], device=device)
 thinLens1 = Thin_Lens(focal_length=40*mm)
+# asmProp1 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 asmProp1 = ASM_Prop(init_distance=thinLens1.focal_length, do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
