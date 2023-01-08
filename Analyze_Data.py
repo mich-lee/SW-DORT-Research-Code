@@ -191,21 +191,22 @@ preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpro
 
 
 
-
+# Plot settings
 nCols1 = 3
 nRows1 = 1
 xLims1 = [-3, 3]
 yLims1 = [-3, 3]
 coordsMultiplier1 = 1e3	# Scale for millimeters
 
+# Deriving some quantities
 nSubplots1 = nCols1 * nRows1
-
 scattererLocsX = []
 scattererLocsY = []
 for i in range(len(scattererModel.scatterers)):
 	sTemp = scattererModel.scatterers[i]
 	scattererLocsX = scattererLocsX + [sTemp.location_x * coordsMultiplier1]
 	scattererLocsY = scattererLocsY + [sTemp.location_y * coordsMultiplier1]
+
 
 for singVecNum in range(nSubplots1 * 8):
 	vecIn = V[... , :, singVecNum]
