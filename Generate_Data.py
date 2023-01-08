@@ -85,7 +85,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.25*mm
+syntheticWavelength = 0.5*mm
 lambda1 = 1400*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
@@ -127,23 +127,6 @@ fieldIn = ElectricField(data=fieldData, wavelengths=wavelengthContainer, spacing
 fieldIn.wavelengths.to(device=device)
 fieldIn.spacing.to(device=device)
 
-macropixelRes, macropixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
-vecIn = torch.zeros(macropixelRes, dtype=torch.complex64, device=device)
-vecIn[...] = torch.exp(1j * 2 * np.pi * 5 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1]))
-vecIn[...] = vecIn + torch.exp(1j * 2 * np.pi * 6 * (((torch.arange(torch.tensor(vecIn.shape[-2:]).prod()).view(vecIn.shape[-2], vecIn.shape[-1])) % vecIn.shape[-1]) / vecIn.shape[-1])).to(device=device)
-
-vecIn[...] = 0
-# vecIn[0,0] = 1
-vecIn[32,32] = 1
-# vecIn[...] = torch.randn(vecIn.shape)
-# vecIn[...] = 1
-
-vecIn = vecIn.view(1,1,1,1,macropixelRes[0]*macropixelRes[1])
-fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=fieldIn)
-
-# fieldIn.data = torch.rand(fieldIn.data.shape, device=fieldIn.data.device) + 1j
-# fieldIn.data[...] = 1 + 0j
-
 printSimulationSize(inputRes, inputSpacing, 'Simulation Input\t|\t')
 printSimulationSize(intermediateRes, intermediateSpacing, 'Intermediate Calcs\t|\t')
 printSimulationSize(outputRes, outputSpacing, 'Simulation Output\t|\t')
@@ -155,13 +138,13 @@ print()
 do_ffts_inplace = True
 
 scattererList = [
-					# Scatterer(location_x=-1.44*mm, location_y=-1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
+					Scatterer(location_x=-1.44*mm, location_y=-0.55*1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+					Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.07*mm, scatteringResponse=0.8),
 
 					# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
 					# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
+					# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
 				]
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)

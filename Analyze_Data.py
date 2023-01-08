@@ -91,7 +91,8 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
 # loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
-loadedData = torch.load('DATA/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
+loadedData = torch.load('DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2023-1-7_23h04m14s.pt', map_location=device)
 
 H = loadedData['Transfer_Matrix']
 U, S, Vh = torch.linalg.svd(H)
@@ -146,7 +147,7 @@ for singVecNum in range(10):
 	synthField.wavelengths.to(device)
 	synthField.spacing.to(device)
 
-	fieldOut = model[3](synthField)
+	fieldOut = model[4](synthField)
 
 	plt.figure(singVecNum + 1)
 	plt.clf()
