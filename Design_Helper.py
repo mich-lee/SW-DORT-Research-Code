@@ -85,12 +85,12 @@ setup = BasicSetup	(
 						simulation_resolution = (4096,4096),
 						simulation_sample_spacing = 3.2*um,
 						input_resolution = (256, 256),
-						input_sample_spacing = 3*(6.4*um)
+						input_sample_spacing = 4*(6.4*um)
 					)
 
-asdf = FT_Lens_Setup_Helper(setup, 532*nm, 100*mm)
-print(asdf.ft_out_dimensions)
-print(asdf.sinc_envelope_first_null)
-print(asdf.intermediate_field_size_estimate)
+asdf = FT_Lens_Setup_Helper(setup, 854*nm, 35*mm)
+print("Output dimensions (mm): " + str(round(asdf.ft_out_dimensions[0]*1000,3)) + " x " + str(round(asdf.ft_out_dimensions[1]*1000,3)))
+print(str(round(asdf.sinc_envelope_first_null*1000,3)))
+print(str(round(asdf.intermediate_field_size_estimate[0]*1000,3)) + " x " + str(round(asdf.intermediate_field_size_estimate[1]*1000,3)))
 
 pass
