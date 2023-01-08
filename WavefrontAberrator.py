@@ -124,8 +124,12 @@ class WavefrontAberrator(CGH_Component):
 		if not self._check_field_dimensions_valid_bool(field):
 			raise Exception("Input field does not match the resolution and/or spacing specified.")
 
+	def get_thickness(self):
+		raise Exception("The 'getThickness' method should be implemented in a subclass.")
+
 	# Deprecated.  This method is only here to provide backwards compatibility with a previously saved model.
 	def forward(self, field : ElectricField) -> ElectricField:
+		raise Exception("Should not be using WavefrontAberrator's forward(...) method.")
 		if not hasattr(self, '_warnFlag'):
 			warnings.warn("Should not be using WavefrontAberrator's forward(...) method.")
 			self._warnFlag = True
@@ -146,6 +150,9 @@ class RandomPhaseScreen(WavefrontAberrator):
 			parameterDict = parameterDict
 		)
 		self.model = model
+
+	def get_thickness(self):
+		return self.parameterDict['meanFreePath'] * self.parameterDict['numLayers']
 
 	def forward(self, field : ElectricField) -> ElectricField:
 		self._check_field_dimensions_valid(field)
@@ -175,6 +182,9 @@ class RandomThicknessScreen(WavefrontAberrator):
 		self.n_screen = n_screen
 		self.n_ambient = n_ambient
 		self.sign_convention = sign_convention
+
+	def get_thickness(self):
+		return self.max_thickness
 
 	def forward(self, field : ElectricField) -> ElectricField:
 		self._check_field_dimensions_valid(field)

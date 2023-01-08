@@ -13,6 +13,7 @@ sys.path.append("holotorch-lib/holotorch")
 
 from ScattererModel import Scatterer, ScattererModel
 from TransferMatrixProcessor import TransferMatrixProcessor
+from WavefrontAberrator import WavefrontAberrator
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 
 import holotorch.utils.Dimensions as Dimensions
@@ -22,6 +23,7 @@ from holotorch.utils.units import * # E.g. to get nm, um, mm etc.
 from holotorch.Spectra.WavelengthContainer import WavelengthContainer
 from holotorch.Spectra.SpacingContainer import SpacingContainer
 from holotorch.CGH_Datatypes.ElectricField import ElectricField
+from holotorch.Optical_Propagators.Propagator import Propagator
 from holotorch.Optical_Propagators.ASM_Prop import ASM_Prop
 # from holotorch.Optical_Components.Resize_Field import Resize_Field
 # from holotorch.Sensors.Detector import Detector
@@ -70,16 +72,77 @@ def generateHadamardBasisVector(n : int, nRows : int, nCols : int, nStep : int):
 
 	return ((colPattern * rowPattern) / np.sqrt(nRows * nCols)).repeat_interleave(nStep, dim=-2).repeat_interleave(nStep, dim=-1) + 0j
 
-################################################################################################################################
 
-use_cuda = True
-gpu_no = 0
-device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
+# Feed input fields into the returned 'inputModel' to get the fields that one uses to get the synthetic wavelength field that is backpropagated.
+def getInputAndBackpropagationModels(model : torch.nn.Sequential):
+	def get_aberratorless_propagator(comps : torch.nn.Sequential):
+		if len(comps) == 0:
+			raise Exception("Error")
+
+		totalDist = 0
+		asmStateDict : dict = None
+		for i in range(len(comps)):
+			cur = comps[i]
+			if issubclass(type(cur), Propagator):
+				totalDist = totalDist + cur.z
+				if (type(cur) is ASM_Prop) and (asmStateDict is None):
+					asmStateDict = cur.__dict__
+			elif issubclass(type(cur), WavefrontAberrator):
+				totalDist = totalDist + cur.get_thickness()
+			else:
+				raise Exception("Unknown component")
+
+		prop = ASM_Prop(init_distance=totalDist)
+		if asmStateDict is not None:
+			# Loading settings from an existing ASM_Prop object (if there is one)
+			prop.__setstate__(asmStateDict)	# Will override the `init_distance=totalDist` a few lines back
+											#	`prop.z` will be set to whatever was saved (i.e. NOT totalDist)
+			prop.z = totalDist	# Setting `prop.z` again after it was overwritten
+			prop.prop_kernel = None	# Will force the propagation kernel to be rebuilt the next time a field is input (different `prop.z` means different propagation kernel needed)
+									#	Probably not necessary as `prop_kernel` was probably saved as `None` anyways.
+
+		return prop
+		
+
+	if type(model) is not torch.nn.Sequential:
+		raise Exception("Model must be of type 'torch.nn.Sequential'.")
+	
+	preScattererModel = torch.nn.Sequential()
+	scattererModel = None
+	for i in range(len(model)):
+		if type(model[i]) is not ScattererModel:
+			preScattererModel.append(model[i])
+		else:
+			scattererModel = model[i]
+			break
+	if scattererModel is None:
+		raise Exception("No scatterers found!")
+	
+	tempBackpropModelStartInd = len(preScattererModel)
+	for i in range(len(preScattererModel) - 1, -1, -1):
+		curType = type(preScattererModel[i])
+		if issubclass(curType, Propagator) or issubclass(curType, WavefrontAberrator):
+			tempBackpropModelStartInd = i
+		else:
+			break
+	inputModel = preScattererModel[0:tempBackpropModelStartInd]
+	tempBackpropModel = preScattererModel[tempBackpropModelStartInd:]
+
+	# Making a model for backpropagation (of fields) that does not include wavefront abberators
+	backpropModel = get_aberratorless_propagator(tempBackpropModel)
+
+	return preScattererModel, scattererModel, inputModel, backpropModel
 
 ################################################################################################################################
 
 # aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
 # bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
+
+################################################################################################################################
+
+use_cuda = True
+gpu_no = 0
+device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 ################################################################################################################################
 
@@ -91,48 +154,65 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
 # loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
-loadedData = torch.load('DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
+# loadedData = torch.load('DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2023-1-7_23h04m14s.pt', map_location=device)
+loadedData = torch.load('DATA/Experiment_2023-1-8_04h34m16s.pt', map_location=device)
 
-H = loadedData['Transfer_Matrix']
-U, S, Vh = torch.linalg.svd(H)
-V = Vh.conj().transpose(-2, -1)
+################################################################################################################################
 
-U, S, V = TransferMatrixProcessor.demixEigenstructure(U, S, V, 'V')
-Vh = V.conj().transpose(-2, -1)
+doEigenstructureDemixing = True
+
+################################################################################################################################
 
 model = loadedData['Model']
 inputBoolMask = loadedData['Input_Bool_Mask']
 outputBoolMask = loadedData['Output_Bool_Mask']
 
+H = loadedData['Transfer_Matrix']
+
+print("Taking singular value decomposition of the transfer matrix...", end='')
+U, S, Vh = torch.linalg.svd(H)
+V = Vh.conj().transpose(-2, -1)
+print("Done!")
+
+if doEigenstructureDemixing:
+	print("Demixing eigenstructure...", end='')
+	U, S, V = TransferMatrixProcessor.demixEigenstructure(U, S, V, 'V')
+	Vh = V.conj().transpose(-2, -1)
+	print("Done!")
+else:
+	print("Skipped eigenstructure demixing step.")
+
 q = torch.matmul(Vh[0,0,0,1,:,:], V[0,0,0,0,:,:])
 w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
 
-# Old code:
-	# fieldIn = copy.deepcopy(loadedData['Field_Input_Prototype'])
-	# fieldIn.data[...] = 0
-	# v1 = V[0,0,0,0,:,0]
-	# v2 = V[0,0,0,1,:,0]
-	# fieldIn.data[...] = 0
-	# fieldIn.data[0,0,0,0,inputBoolMask] = v1
-	# fieldIn.data[0,0,0,1,inputBoolMask] = v2
-	# macropixelShape = torch.zeros(fieldIn.data.shape[-2:], device=device)
-	# macropixelShape[253:261,253:261] = 1
-	# fieldIn.data[...,:,:] = applyFilterSpaceDomain(macropixelShape, fieldIn.data[...,:,:])
-
-# # tempResampler = Field_Resampler(outputHeight=int(4*fieldIn.data.shape[-2]), outputWidth=int(4*fieldIn.data.shape[-1]), outputPixel_dx=6.4*um/4, outputPixel_dy=6.4*um/4, device=device)
 # tempResampler = Field_Resampler(outputHeight=8192, outputWidth=8192, outputPixel_dx=6.4*um, outputPixel_dy=6.4*um, device=device)
+preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpropagationModels(model)
 
-# # m1 = model[0:4]
-# # m1 = torch.nn.Sequential(model[0], model[1], tempResampler, model[2])
-m1 = model[0:4]
 
-for singVecNum in range(10):
-	# singVecNum = 0
+
+
+nCols1 = 3
+nRows1 = 1
+xLims1 = [-3, 3]
+yLims1 = [-3, 3]
+coordsMultiplier1 = 1e3	# Scale for millimeters
+
+nSubplots1 = nCols1 * nRows1
+
+scattererLocsX = []
+scattererLocsY = []
+for i in range(len(scattererModel.scatterers)):
+	sTemp = scattererModel.scatterers[i]
+	scattererLocsX = scattererLocsX + [sTemp.location_x * coordsMultiplier1]
+	scattererLocsY = scattererLocsY + [sTemp.location_y * coordsMultiplier1]
+
+for singVecNum in range(nSubplots1 * 8):
 	vecIn = V[... , :, singVecNum]
 	fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
 
-	o1 = m1(fieldIn)
+	o1 = inputModel(fieldIn)
+	fieldOut_o1 = backpropModel(o1)
 	
 	# Resample to force spacing to be the same for all dimensions (B, T, P, and C)
 	# o1 = model[0](o1)
@@ -147,41 +227,30 @@ for singVecNum in range(10):
 	synthField.wavelengths.to(device)
 	synthField.spacing.to(device)
 
-	fieldOut = model[4](synthField)
+	fieldOut = backpropModel(synthField)
 
-	plt.figure(singVecNum + 1)
-	plt.clf()
-	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+
+	subplotNum = (singVecNum % nSubplots1) + 1
+	plt.figure(int(np.floor(singVecNum / nSubplots1)) + 1)
+	if subplotNum == 1:
+		plt.clf()
+
+	plt.subplot(nRows1*2, nCols1, subplotNum)
+	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='turbo')
+	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	plt.xlim(xLims1)
+	plt.ylim(yLims1)
+	plt.title("[REDACTED] #" + str(singVecNum + 1))
+	plt.legend()
+
+	plt.subplot(nRows1*2, nCols1, subplotNum + nCols1)
+	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='Paired')
+	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='black', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	plt.xlim(xLims1)
+	plt.ylim(yLims1)
+	plt.title("[REDACTED] #" + str(singVecNum + 1))
+	plt.legend()
+
+	plt.show()
 
 pass
-
-
-
-
-# tempSingVecInd = 100
-# fieldIn.data[...] = torch.zeros(1,1,1,wavelengthContainer.data_tensor.numel(),inputRes[0],inputRes[1],device=device) + 0j
-# fieldIn.data[...,inputBoolMask] = V[0,0,0,0,:,tempSingVecInd]
-# aaa = torch.zeros(fieldIn.data.shape[-2:], device=device)
-# # aaa[270,480] = 1
-# # aaa[263:278,473:488]
-# aaa[263:278,473:488] = (-torch.tensor(range(-7,8)).abs() - torch.tensor([list(range(-7,8))]).abs().transpose(-2,-1)) + 14
-# fieldIn.data[...,:,:] = applyFilterSpaceDomain(aaa, fieldIn.data[...,:,:])
-# # fieldIn.data = fieldIn.data * S[... , tempSingVecInd]
-# temp2 = lensSys1(fieldIn)
-# plt.clf()
-# plt.subplot(1,2,1)
-# fieldIn.visualize(flag_axis=True)
-# plt.subplot(1,2,2)
-# temp2.visualize(flag_axis=True)
-# # scattererModel(temp2).visualize(flag_axis=True)
-
-
-# tempSingVecInd = 0
-# fieldIn.data[...] = 0
-# fieldIn.data[...,inputBoolMask] = V[0,0,0,0,:,tempSingVecInd]
-# aaa = torch.zeros(fieldIn.data.shape[-2:], device=device)
-# aaa[253:261,253:261] = 1
-# fieldIn.data[...,:,:] = applyFilterSpaceDomain(aaa, fieldIn.data[...,:,:])
-# plt.clf()
-# get_field_slice(fieldIn, channel_inds_range=0).visualize(flag_axis=True)
-# plt.clim(0,1e-2)
