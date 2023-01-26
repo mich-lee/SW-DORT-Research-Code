@@ -174,26 +174,30 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 
 thinLens1 = Thin_Lens(focal_length=25*mm)
-asmProp1 = ASM_Prop(init_distance=80*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=(35*mm - screenDist), do_ffts_inplace=do_ffts_inplace)
-asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
+asmProp1 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)\
+# # asmProp2 = ASM_Prop(init_distance=(50*mm - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+# # asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
-								Ideal_Imaging_Lens(focal_length=25*mm, object_dist=40*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
+								FT_Lens(focal_length=25*mm),
+								Radial_Optical_Aperture(aperture_radius=1*np.sqrt(2)*mm),
+								inputResampler,
 								asmProp1,
-								Radial_Optical_Aperture(aperture_radius=6*mm),
+								Radial_Optical_Aperture(aperture_radius=5*mm),
 								thinLens1,
-								asmProp2,
-								wavefrontAberrator,
-								asmProp3,
+								asmProp1, # asmProp2,
+								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=50*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
+								# wavefrontAberrator,
+								# asmProp3,
 								scattererModel,
-								asmProp3,
-								wavefrontAberratorReverse,
-								asmProp2,
+								# asmProp3,
+								# wavefrontAberratorReverse,
+								# Ideal_Imaging_Lens(focal_length=25*mm, object_dist=50*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
+								asmProp1, # asmProp2,
 								thinLens1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								asmProp1,
-								Ideal_Imaging_Lens(focal_length=10*mm, object_dist=250*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
+								Ideal_Imaging_Lens(focal_length=10*mm, object_dist=270*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
 								outputResampler
 							)
 

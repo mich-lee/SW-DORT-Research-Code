@@ -77,7 +77,8 @@ def generateHadamardBasisVector(n : int, nRows : int, nCols : int, nStep : int):
 def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 	def get_aberratorless_propagator(comps : torch.nn.Sequential):
 		if len(comps) == 0:
-			raise Exception("Error")
+			warnings.warn("Empty backpropagation model")
+			return comps
 
 		totalDist = 0
 		asmStateDict : dict = None
@@ -156,7 +157,11 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
 # loadedData = torch.load('DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2023-1-7_23h04m14s.pt', map_location=device)
-loadedData = torch.load('DATA/Experiment_2023-1-8_04h34m16s.pt', map_location=device)
+
+# loadedData = torch.load('DATA/GOOD DATA/Experiment_2023-1-8_04h34m16s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2023-1-25_14h13m51s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2023-1-25_16h01m48s.pt', map_location=device)
+loadedData = torch.load('DATA/Experiment_2023-1-25_17h25m58s.pt', map_location=device)
 
 ################################################################################################################################
 
@@ -241,7 +246,7 @@ for singVecNum in range(nSubplots1 * 8):
 	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	plt.xlim(xLims1)
 	plt.ylim(yLims1)
-	plt.title("[REDACTED] #" + str(singVecNum + 1))
+	plt.title("Singular Value #" + str(singVecNum + 1))
 	plt.legend()
 
 	plt.subplot(nRows1*2, nCols1, subplotNum + nCols1)
@@ -249,7 +254,7 @@ for singVecNum in range(nSubplots1 * 8):
 	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='black', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	plt.xlim(xLims1)
 	plt.ylim(yLims1)
-	plt.title("[REDACTED] #" + str(singVecNum + 1))
+	plt.title("Singular Value #" + str(singVecNum + 1))
 	plt.legend()
 
 	plt.show()
