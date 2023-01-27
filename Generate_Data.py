@@ -85,7 +85,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.1*mm
+syntheticWavelength = 0.05*mm
 lambda1 = 1400*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
@@ -146,8 +146,11 @@ scattererList = [
 
 					# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
-					Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
+					# Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
+
+					Scatterer(location_x=-0.4*mm, location_y=-0.4*mm, diameter=0.02*mm, scatteringResponse=0.7),
+					Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.03*mm, scatteringResponse=0.8),
 				]
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
@@ -156,7 +159,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 0.5*mm
+screenDist = 2*mm #0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
@@ -181,7 +184,7 @@ model = torch.nn.Sequential	(
 								inputResampler,
 								Ideal_Imaging_Lens(focal_length=25*mm, object_dist=40*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
 								asmProp1,
-								Radial_Optical_Aperture(aperture_radius=6*mm),
+								Radial_Optical_Aperture(aperture_radius=5*mm),
 								thinLens1,
 								asmProp2,
 								wavefrontAberrator,
