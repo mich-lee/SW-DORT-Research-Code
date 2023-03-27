@@ -6,6 +6,7 @@ import sys
 import copy
 import datetime
 # import pathlib
+import gc
 import warnings
 
 sys.path.append("holotorch-lib/")
@@ -111,7 +112,8 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 	preScattererModel = torch.nn.Sequential()
 	scattererModel = None
 	for i in range(len(model)):
-		if type(model[i]) is not ScattererModel:
+		# if type(model[i]) is not ScattererModel:
+		if not issubclass(type(model[i]), ScattererModel):
 			preScattererModel.append(model[i])
 		else:
 			scattererModel = model[i]
@@ -163,7 +165,12 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # loadedData = torch.load('DATA/Experiment_2023-1-25_16h01m48s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2023-1-25_17h25m58s.pt', map_location=device)
 # loadedData = torch.load('DATA/Experiment_2023-1-26_15h42m57s.pt', map_location=device)
-loadedData = torch.load('DATA/GOOD DATA/GREAT/Experiment_2023-1-26_20h01m29s.pt', map_location=device)
+
+# loadedData = torch.load('DATA/GOOD DATA/GREAT/Experiment_2023-1-26_20h01m29s.pt', map_location=device)
+
+# loadedData = torch.load('DATA/Experiment_2023-2-13_13h56m39s.pt', map_location=device)
+# loadedData = torch.load('DATA/Experiment_2023-3-20_16h33m08s.pt', map_location=device) # "N" with aberrating layers
+loadedData = torch.load('DATA/Experiment_2023-3-20_18h13m30s.pt', map_location=device) # "N" without aberrating layers
 
 ################################################################################################################################
 
@@ -199,8 +206,9 @@ preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpro
 
 
 # Plot settings
+doPlotting = True
 nCols1 = 3
-nRows1 = 1
+nRows1 = 2
 xLims1 = [-3, 3]
 yLims1 = [-3, 3]
 coordsMultiplier1 = 1e3	# Scale for millimeters
@@ -214,8 +222,15 @@ for i in range(len(scattererModel.scatterers)):
 	scattererLocsX = scattererLocsX + [sTemp.location_x * coordsMultiplier1]
 	scattererLocsY = scattererLocsY + [sTemp.location_y * coordsMultiplier1]
 
+# fields = []
+# synthFields = []
+imgField0 = None
+temp0 = None
 
-for singVecNum in range(nSubplots1 * 8):
+
+for singVecNum in range(500):
+	print("Processing singular vector #" + str(singVecNum) + "...", end='')
+
 	vecIn = V[... , :, singVecNum]
 	fieldIn = TransferMatrixProcessor.getModelInputField(macropixelVector=vecIn, samplingBoolMask=inputBoolMask, fieldPrototype=loadedData['Field_Input_Prototype'])
 
@@ -237,28 +252,220 @@ for singVecNum in range(nSubplots1 * 8):
 
 	fieldOut = backpropModel(synthField)
 
+	# print("TESTING.  DISABLE THIS.")
+	# fieldOut = fieldOut_o1[:,:,:,0,:,:]
+
+	if imgField0 is None:
+		imgField0 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		imgField1 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		imgField2 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		imgField3 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		imgField4 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		imgField5 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+		temp0 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
+	temp0[...] = fieldOut.data
+	temp0Max = temp0.abs().max()
+	
+	# temp0 = temp0 / temp0Max
+	# temp0[temp0.abs() < 0.99 * temp0Max] = 0
+
+	imgField0 = torch.maximum(imgField0, w[i] * temp0.abs())
+	imgField1 = imgField1 + (w[i] * temp0.abs())
+	imgField2 = torch.maximum(imgField2, temp0.abs())
+	imgField3 = imgField3 + temp0.abs()
+	temp0[...] = fieldOut.data
+	imgField4 = imgField4 + (w[i] * temp0)
+	imgField5 = imgField5 + temp0.abs()
+
+
+	gc.collect()
+	torch.cuda.empty_cache()
+	gc.collect()
+	torch.cuda.empty_cache()
+
+
+	# tempField = fieldOut_o1.detach().cpu()
+	# tempSynthField = fieldOut.detach().cpu()
+	# fields.append(tempField)
+	# synthFields.append(tempSynthField)
+
+	print("Done!")
+
+	if not doPlotting:
+		continue
+
+
+	# For debugging
+	# plt.clf()
+	# a = get_field_slice(fieldOut_o1,channel_inds_range=0)
+	# a.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 
 	subplotNum = (singVecNum % nSubplots1) + 1
 	plt.figure(int(np.floor(singVecNum / nSubplots1)) + 1)
 	if subplotNum == 1:
 		plt.clf()
 
-	plt.subplot(nRows1*2, nCols1, subplotNum)
+	plt.subplot(nRows1, nCols1, subplotNum)
 	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='turbo')
-	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	plt.xlim(xLims1)
 	plt.ylim(yLims1)
-	plt.title("Singular Value #" + str(singVecNum + 1))
+	plt.title("$\Lambda$ - Singular Value #" + str(singVecNum + 1))
 	plt.legend()
 
-	plt.subplot(nRows1*2, nCols1, subplotNum + nCols1)
-	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='Paired')
-	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='black', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
-	plt.xlim(xLims1)
-	plt.ylim(yLims1)
-	plt.title("Singular Value #" + str(singVecNum + 1))
-	plt.legend()
+	# plt.subplot(nRows1*2, nCols1, subplotNum)
+	# fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='turbo')
+	# plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	# plt.xlim(xLims1)
+	# plt.ylim(yLims1)
+	# plt.title("$\Lambda$ - Singular Value #" + str(singVecNum + 1))
+	# plt.legend()
+
+	# plt.subplot(nRows1*2, nCols1, subplotNum + nCols1)
+	# fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='Paired')
+	# plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='black', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	# plt.xlim(xLims1)
+	# plt.ylim(yLims1)
+	# plt.title("Singular Value #" + str(singVecNum + 1))
+	# plt.legend()
+
+	# plt.subplot(nRows1*2, nCols1, subplotNum + nCols1)
+	# tempField = get_field_slice(fieldOut_o1, channel_inds_range=0)
+	# tempField.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='turbo')
+	# plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='+', color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	# plt.xlim(xLims1)
+	# plt.ylim(yLims1)
+	# plt.title("$\lambda$ - Singular Value #" + str(singVecNum + 1))
+	# plt.legend()
 
 	plt.show()
 
 pass
+
+
+
+a1 = fieldOut.detach().cpu()
+a1.data = imgField
+plt.clf()
+a1.visualize(flag_axis=True,cmap='turbo')
+plt.xlim(-1, 1)
+plt.ylim(-1, 1)
+
+
+
+
+
+
+
+
+
+# a = torch.zeros(synthFields[0].data.shape).cuda()
+# for i in range(len(fields)):
+# 	print(str(i))
+# 	temp0 = synthFields[i].data.cuda()
+# 	temp0Max = temp0.abs().max()
+# 	temp0[temp0.abs() < 0.99 * temp0Max] = 0
+# 	# a = torch.maximum(a, w[i].cpu() * temp0.abs())
+# 	a = a + abs(w[i].cpu() * temp0.abs())
+# 	synthFields[i].data.cpu()
+# a1 = fieldOut.detach().cpu()
+# a1.data = a
+
+
+
+# fin0 = get_field_slice(o1,channel_inds_range=0)
+# fin1 = get_field_slice(o1,channel_inds_range=1)
+# fout0 = get_field_slice(fieldOut_o1,channel_inds_range=0)
+# fout1 = get_field_slice(fieldOut_o1,channel_inds_range=1)
+
+# torch.cuda.empty_cache()
+
+# plt.figure(1)
+# plt.clf()
+# plt.subplot(2,3,1)
+# fin0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{out}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[0]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.subplot(2,3,2)
+# fin1.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{out}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[1]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.subplot(2,3,3)
+# synthField.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{out,synth}(x,y;\Lambda = 0.05mm)$', fontsize=16)
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+
+# tempLim1 = 1
+# tempColor1 = 'red'
+# tempMarker1 = 'x'
+# tempSize1 = 160
+# plt.figure(2)
+# plt.clf()
+# plt.subplot(2,3,1)
+# fout0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{backprop}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[0]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(-tempLim1,tempLim1)
+# plt.ylim(-tempLim1,tempLim1)
+# plt.subplot(2,3,2)
+# fout1.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{backprop}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[1]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(-tempLim1,tempLim1)
+# plt.ylim(-tempLim1,tempLim1)
+# plt.subplot(2,3,3)
+# fieldOut.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{backprop,synth}(x,y;\Lambda = 0.05mm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(-tempLim1,tempLim1)
+# plt.ylim(-tempLim1,tempLim1)
+
+# tempLim2a = 0.2
+# tempLim2b = 0.5
+# tempColor2 = 'red'
+# tempMarker2 = 'x'
+# tempSize2 = 160
+# plt.figure(3)
+# plt.clf()
+# plt.subplot(2,3,1)
+# fout0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.clim(0.22,0.245)
+# plt.title('$u_{backprop}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[0]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize2, marker=tempMarker2, color=tempColor2, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(tempLim2a,tempLim2b)
+# plt.ylim(tempLim2a,tempLim2b)
+# plt.subplot(2,3,2)
+# fout1.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.clim(0.22,0.245)
+# plt.title('$u_{backprop}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[1]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize2, marker=tempMarker2, color=tempColor2, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(tempLim2a,tempLim2b)
+# plt.ylim(tempLim2a,tempLim2b)
+# plt.subplot(2,3,3)
+# fieldOut.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.clim(0.000263,0.00026319269090890884)
+# plt.title('$u_{backprop,synth}(x,y;\Lambda = 0.05mm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize2, marker=tempMarker2, color=tempColor2, edgecolor='none', label='Scatterer')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(tempLim2a,tempLim2b)
+# plt.ylim(tempLim2a,tempLim2b)

@@ -4,6 +4,7 @@ import sys
 import warnings
 
 import torch
+import numpy as np
 import matplotlib.pyplot as plt
 
 sys.path.append("holotorch-lib/")
@@ -23,6 +24,30 @@ class Scatterer:
 		self.location_y = location_y
 		self.diameter = diameter
 		self.scatteringResponse = scatteringResponse
+
+
+class ScattererDrawing:
+	def __init__(self):
+		self.scattererList = []
+
+	def getScattererList(self):
+		return self.scattererList
+	
+	def clearDrawing(self):
+		self.scattererList = []
+
+	def drawLine(self, x1, y1, x2, y2, numPoints, diameterMin, diameterMax, scatteringResponseMin, scatteringResponseMax):
+		x = np.linspace(x1, x2, numPoints)
+		y = np.linspace(y1, y2, numPoints)
+		d = np.random.uniform(diameterMin, diameterMax, numPoints)
+		s = np.random.uniform(scatteringResponseMin, scatteringResponseMax, numPoints)
+		
+		for i in range(len(x)):
+			tempScatterer = Scatterer(x[i], y[i], d[i], s[i])
+			self.scattererList.append(tempScatterer)
+
+	def drawPoint(self, x, y, diameter, scatteringResponse):
+		self.drawLine(x, y, x, y, 1, diameter, diameter, scatteringResponse, scatteringResponse)
 
 
 class ScattererModel(CGH_Component):
