@@ -92,11 +92,11 @@ lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (512, 512)
+inputRes = (768, 768)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
-intermediateSpacing = 3.2e-6 #inputSpacing / 2
+intermediateSpacing = 3.2*um #inputSpacing / 2
 
 outputRes = (64, 64)
 outputSpacing = 1.85*um
@@ -105,8 +105,8 @@ outputSpacing = 1.85*um
 ################################################################################################################################
 
 
-inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
-outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
+inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 32, 32)
+outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 32, 32)
 
 pixelResolution, pixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
 dx_pixel = pixelSize[0] * inputSpacing
@@ -137,28 +137,37 @@ print()
 
 do_ffts_inplace = True
 
-# scattererList = [
-# 					# Scatterer(location_x=-1.44*mm, location_y=-1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
-# 					# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
+scattererList = [
+						# Scatterer(location_x=-1.44*mm, location_y=-1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+						# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
 
-# 					# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
-# 					# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
+						# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
+						# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-# 					# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
+						# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
 
-# 					# Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
-# 					# Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
+						# Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
+						# Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-# 					Scatterer(location_x=-0.4*mm, location_y=-0.4*mm, diameter=0.02*mm, scatteringResponse=0.7),
-# 					Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.03*mm, scatteringResponse=0.8),
-# 				]
+					# Scatterer(location_x=-0.4*mm, location_y=-0.4*mm, diameter=0.02*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.03*mm, scatteringResponse=0.8),
 
-scattererDrawing = ScattererDrawing()
-	# scattererDrawing.drawLine(-0.3*mm, 0, 0.3*mm, 0, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-scattererDrawing.drawLine(-0.35*mm, -0.3*mm, 0.35*mm, -0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-scattererDrawing.drawLine(0.35*mm, -0.3*mm, -0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-scattererDrawing.drawLine(-0.35*mm, 0.3*mm, 0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-scattererList = scattererDrawing.getScattererList()
+					# Scatterer(location_x=0.35*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=-0.35*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+
+					# Scatterer(location_x=0.3*mm, location_y=-0.3*mm, diameter=0.01*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=-0.3*mm, location_y=0.3*mm, diameter=0.015*mm, scatteringResponse=0.8),
+
+					Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
+					Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+				]
+
+# scattererDrawing = ScattererDrawing()
+# 	# scattererDrawing.drawLine(-0.3*mm, 0, 0.3*mm, 0, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+# scattererDrawing.drawLine(-0.35*mm, -0.3*mm, 0.35*mm, -0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+# scattererDrawing.drawLine(0.35*mm, -0.3*mm, -0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+# scattererDrawing.drawLine(-0.35*mm, 0.3*mm, 0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+# scattererList = scattererDrawing.getScattererList()
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
 scattererModel = ScattererModel(scattererList)
@@ -166,7 +175,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 2*mm #0.5*mm
+screenDist = 4*mm #0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
@@ -193,15 +202,15 @@ model = torch.nn.Sequential	(
 								asmProp1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								thinLens1,
-								asmProp2_no_aberrator,
-								# asmProp2,
-								# wavefrontAberrator,
-								# asmProp3,
+								# asmProp2_no_aberrator,
+								asmProp2,
+								wavefrontAberrator,
+								asmProp3,
 								scattererModel,
-								# asmProp3,
-								# wavefrontAberratorReverse,
-								# asmProp2,
-								asmProp2_no_aberrator,
+								asmProp3,
+								wavefrontAberratorReverse,
+								asmProp2,
+								# asmProp2_no_aberrator,
 								thinLens1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								asmProp1,
@@ -238,8 +247,8 @@ model = torch.nn.Sequential	(
 ################################################################################################################################
 
 
-inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
-outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
+# inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
+# outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
 
 if True:
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,

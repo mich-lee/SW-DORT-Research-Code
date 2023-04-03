@@ -3,6 +3,8 @@ import torch
 import matplotlib.pyplot as plt
 
 import sys
+import os
+import shutil
 import copy
 import datetime
 # import pathlib
@@ -138,8 +140,12 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 
 ################################################################################################################################
 
-# aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
-# bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
+
+
+
+
+
+
 
 ################################################################################################################################
 
@@ -149,34 +155,63 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 ################################################################################################################################
 
-# loadedData = torch.load('DATA/Experiment_202210201534.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_202210192329.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2022-10-27_19h14m38s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2022-11-6_22h18m58s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2022-11-16_20h46m21s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2022-11-22_13h38m51s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2022-11-22_20h00m26s.pt', map_location=device)		# Good data?
-# loadedData = torch.load('DATA/Blah/Experiment_2023-1-3_17h03m58s.pt', map_location=device)
-# loadedData = torch.load('DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-1-7_23h04m14s.pt', map_location=device)
-
-# loadedData = torch.load('DATA/GOOD DATA/Experiment_2023-1-8_04h34m16s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-1-25_14h13m51s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-1-25_16h01m48s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-1-25_17h25m58s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-1-26_15h42m57s.pt', map_location=device)
-
-# loadedData = torch.load('DATA/GOOD DATA/GREAT/Experiment_2023-1-26_20h01m29s.pt', map_location=device)
-
-# loadedData = torch.load('DATA/Experiment_2023-2-13_13h56m39s.pt', map_location=device)
-# loadedData = torch.load('DATA/Experiment_2023-3-20_16h33m08s.pt', map_location=device) # "N" with aberrating layers
-loadedData = torch.load('DATA/Experiment_2023-3-20_18h13m30s.pt', map_location=device) # "N" without aberrating layers
+# aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
+# bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
 
 ################################################################################################################################
 
-doEigenstructureDemixing = True
+# dataFilePath = 'DATA/Experiment_202210201534.pt'
+# dataFilePath = 'DATA/Experiment_202210192329.pt'
+# dataFilePath = 'DATA/Experiment_2022-10-27_19h14m38s.pt'
+# dataFilePath = 'DATA/Experiment_2022-11-6_22h18m58s.pt'
+# dataFilePath = 'DATA/Experiment_2022-11-16_20h46m21s.pt'
+# dataFilePath = 'DATA/Experiment_2022-11-22_13h38m51s.pt'
+# dataFilePath = 'DATA/Experiment_2022-11-22_20h00m26s.pt'	# Good data?
+# dataFilePath = 'DATA/Blah/Experiment_2023-1-3_17h03m58s.pt'
+# dataFilePath = 'DATA/GOOD DATA/Single Scatterer Demo/Experiment_2023-1-7_21h35m04s.pt'
+# dataFilePath = 'DATA/Experiment_2023-1-7_23h04m14s.pt'
+
+# dataFilePath = 'DATA/GOOD DATA/Experiment_2023-1-8_04h34m16s.pt'
+# dataFilePath = 'DATA/Experiment_2023-1-25_14h13m51s.pt'
+# dataFilePath = 'DATA/Experiment_2023-1-25_16h01m48s.pt'
+# dataFilePath = 'DATA/Experiment_2023-1-25_17h25m58s.pt'
+# dataFilePath = 'DATA/Experiment_2023-1-26_15h42m57s.pt'
+
+# dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-1-26_20h01m29s.pt'
+
+# dataFilePath = 'DATA/Experiment_2023-2-13_13h56m39s.pt'
+# dataFilePath = 'DATA/Experiment_2023-3-20_16h33m08s.pt'		# "N" with aberrating layers
+# dataFilePath = 'DATA/Experiment_2023-3-20_18h13m30s.pt'		# "N" without aberrating layers
+
+# dataFilePath = 'DATA/Experiment_2023-4-2_14h21m09s.pt'		# Two pointlike scatterers, no aberrating layer
+# dataFilePath = 'DATA/Experiment_2023-4-2_15h42m31s.pt'		# Two pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/Experiment_2023-4-2_17h18m18s.pt'		# Two pointlike scatterers, aberrating layer
+
+dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-2_20h49m48s.pt'		# Two pointlike scatterers, aberrating layer
 
 ################################################################################################################################
+
+doSyntheticWavelengths = False
+
+doEigenstructureDemixing = False
+singValMagnitudeSimilarityThreshold = 0.15
+
+doPlotting = True
+
+################################################################################################################################
+
+
+
+
+################################################################################################################################
+
+dataFilePathHeadTail = os.path.split(dataFilePath)
+dataFileBackupPath = dataFilePathHeadTail[0] + '/_' + dataFilePathHeadTail[1] + '.bak'
+if not os.path.isfile(dataFileBackupPath):
+	os.rename(dataFilePath, dataFileBackupPath)
+	shutil.copy2(dataFileBackupPath, dataFilePath)
+
+loadedData = torch.load(dataFilePath, map_location=device)
 
 model = loadedData['Model']
 inputBoolMask = loadedData['Input_Bool_Mask']
@@ -184,21 +219,38 @@ outputBoolMask = loadedData['Output_Bool_Mask']
 
 H = loadedData['Transfer_Matrix']
 
-print("Taking singular value decomposition of the transfer matrix...", end='')
-U, S, Vh = torch.linalg.svd(H)
-V = Vh.conj().transpose(-2, -1)
-print("Done!")
+if not 'U' in loadedData:
+	print("Taking singular value decomposition of the transfer matrix...", end='')
+	U, S, Vh = torch.linalg.svd(H)
+	V = Vh.conj().transpose(-2, -1)
+	print("Done!")
+	print("Saving the computed singular value decomposition of the transfer matrix...", end='')
+	loadedData['U'] = U
+	loadedData['S'] = S
+	loadedData['V'] = V
+	torch.save(loadedData, dataFilePath)
+	print("Done!")
+else:
+	print("Loading previously computed singular value decomposition of the transfer matrix...", end='')
+	U = loadedData['U']
+	S = loadedData['S']
+	V = loadedData['V']
+	Vh = V.conj().transpose(-2, -1)
+	print("Done!")
+
+################################################################################################################################
 
 if doEigenstructureDemixing:
 	print("Demixing eigenstructure...", end='')
-	U, S, V = TransferMatrixProcessor.demixEigenstructure(U, S, V, 'V')
+	U, S, V = TransferMatrixProcessor.demixEigenstructure(U, S, V, 'V', singValMagnitudeSimilarityThreshold)
 	Vh = V.conj().transpose(-2, -1)
 	print("Done!")
 else:
 	print("Skipped eigenstructure demixing step.")
 
 q = torch.matmul(Vh[0,0,0,1,:,:], V[0,0,0,0,:,:])
-w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2
+# w = (S[0,0,0,1,:][:,None] + S[0,0,0,0,:][None,:]) / 2		# I don't know why I did it this way.
+w = (S[0,0,0,1,:] + S[0,0,0,0,:]) / 2
 
 # tempResampler = Field_Resampler(outputHeight=8192, outputWidth=8192, outputPixel_dx=6.4*um, outputPixel_dy=6.4*um, device=device)
 preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpropagationModels(model)
@@ -206,7 +258,6 @@ preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpro
 
 
 # Plot settings
-doPlotting = True
 nCols1 = 3
 nRows1 = 2
 xLims1 = [-3, 3]
@@ -228,6 +279,12 @@ imgField0 = None
 temp0 = None
 
 
+if doSyntheticWavelengths:
+	print("NOTE: Using synthetic wavelengths.")
+else:
+	print("NOTE: Not using synthetic wavelengths.")
+
+
 for singVecNum in range(500):
 	print("Processing singular vector #" + str(singVecNum) + "...", end='')
 
@@ -240,20 +297,22 @@ for singVecNum in range(500):
 	# Resample to force spacing to be the same for all dimensions (B, T, P, and C)
 	# o1 = model[0](o1)
 
-	synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
-	synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()
-	synthField = ElectricField(
-								data = synthFieldData,
-								wavelengths = float(fieldIn.wavelengths.data_tensor[0]*fieldIn.wavelengths.data_tensor[1]/(fieldIn.wavelengths.data_tensor[1]-fieldIn.wavelengths.data_tensor[0])),
-								spacing = float(o1.spacing.data_tensor[...,0].squeeze())
-							)
-	synthField.wavelengths.to(device)
-	synthField.spacing.to(device)
+	if doSyntheticWavelengths:
+		synthFieldData = torch.zeros(1,1,1,1,o1.data.shape[-2],o1.data.shape[-1], device=device) + 0j
+		synthFieldData[..., :, :] = o1.data[0,0,0,0,:,:] * o1.data[0,0,0,1,:,:].conj()
+		synthField = ElectricField(
+									data = synthFieldData,
+									wavelengths = float(fieldIn.wavelengths.data_tensor[0]*fieldIn.wavelengths.data_tensor[1]/(fieldIn.wavelengths.data_tensor[1]-fieldIn.wavelengths.data_tensor[0])),
+									spacing = float(o1.spacing.data_tensor[...,0].squeeze())
+								)
+		synthField.wavelengths.to(device)
+		synthField.spacing.to(device)
 
-	fieldOut = backpropModel(synthField)
+		fieldOut = backpropModel(synthField)
+	else:
+		# fieldOut = fieldOut_o1[:,:,:,0,:,:]
+		fieldOut = get_field_slice(fieldOut_o1, channel_inds_range=0)
 
-	# print("TESTING.  DISABLE THIS.")
-	# fieldOut = fieldOut_o1[:,:,:,0,:,:]
 
 	if imgField0 is None:
 		imgField0 = torch.zeros(fieldOut.data.shape, device=fieldOut.data.device)
@@ -267,12 +326,14 @@ for singVecNum in range(500):
 	temp0Max = temp0.abs().max()
 	
 	# temp0 = temp0 / temp0Max
-	# temp0[temp0.abs() < 0.99 * temp0Max] = 0
+	# temp0[temp0.abs() < 0.9 * temp0Max] = 0
+	temp0[temp0.abs() < 0.99 * temp0Max] = 0
 
 	imgField0 = torch.maximum(imgField0, w[i] * temp0.abs())
 	imgField1 = imgField1 + (w[i] * temp0.abs())
 	imgField2 = torch.maximum(imgField2, temp0.abs())
 	imgField3 = imgField3 + temp0.abs()
+
 	temp0[...] = fieldOut.data
 	imgField4 = imgField4 + (w[i] * temp0)
 	imgField5 = imgField5 + temp0.abs()
@@ -355,6 +416,17 @@ plt.ylim(-1, 1)
 
 
 
+
+
+
+
+# a1 = fieldOut.detach().cpu()
+# a1.data = imgField4
+# plt.clf()
+# a1.visualize(flag_axis=True,cmap='turbo')
+# #plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+# plt.xlim(-1, 1)
+# plt.ylim(-1, 1)
 
 
 

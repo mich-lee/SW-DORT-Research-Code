@@ -349,7 +349,7 @@ class TransferMatrixProcessor:
 	#	matrixToDemix = 'U' --> demix with the left-singular vectors
 	#	matrixToDemix = 'V' --> demix with the right-singular vectors
 	@classmethod
-	def demixEigenstructure(cls, U : torch.Tensor, S : torch.Tensor, V : torch.Tensor, matrixToDemix : str = 'V'):
+	def demixEigenstructure(cls, U : torch.Tensor, S : torch.Tensor, V : torch.Tensor, matrixToDemix : str = 'V', singValMagnitudeSimilarityThreshold : float = None):
 		# Input checking
 		if (U.shape[0:4] != V.shape[0:4]):
 			raise Exception("'U' and 'V' matrices have incompatible dimensions.  They should both be the same size in the B, T, P, and C dimensions.")
@@ -371,19 +371,30 @@ class TransferMatrixProcessor:
 		if (len(wavelengthDimIndex) == 0):
 			raise Exception("Error: there only appears to be one wavelength.  No need to demix a single wavelength.")
 		elif (len(wavelengthDimIndex) != 1):
-			raise Exception("The case where wavelengths vary along more than one dimension is not implemented.")
+			# This will catch any case where there is more than one non-singleton dimension among the first four dimensions of singVecs.
+			#	That is good.
+			raise Exception("The case where wavelengths vary along more than one dimension is not implemented.")	# In light of the above comment, this error message could be more descriptive.
 		if (singVecs.shape[wavelengthDimIndex] != 2):
 			raise Exception("Demixing more than two wavelengths has not been implemented.")
 		
 		# 'singVecs' contains the singular vector matrices that will be used for demixing
 		singVecs = singVecs.squeeze()	# Should be an N x height x width tensor (where N is the number of wavelengths)
+		tempS = S.squeeze()
+
+		numSingVals = S.shape[-1]
 
 		# Cross-correlations/inner products
 		corrs = torch.matmul(singVecs.conj().transpose(-2,-1)[1,:,:], singVecs[0,:,:]).abs()
-		_, secondWavelengthInds = torch.max(corrs, 0)
+
+		if (singValMagnitudeSimilarityThreshold is not None):
+			# Prevents the demixed singular values from differing too much in magnitude
+			for i in range(numSingVals):
+				curSingVal = tempS[0,i]
+				corrs[:,i] = corrs[:,i] * (tempS[1,:] >= ((1 - singValMagnitudeSimilarityThreshold) * curSingVal)) * (tempS[1,:] <= ((1+singValMagnitudeSimilarityThreshold) * curSingVal))
+
+		_, secondWavelengthInds = torch.max(corrs, 0)	# WARNING: This can allow for multiple of the same singular vector to be assigned to the same singular value
 
 		# Demixing
-		numSingVals = S.shape[-1]
 		newU = U.clone()
 		newS = S.clone()
 		newV = V.clone()
