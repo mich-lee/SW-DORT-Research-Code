@@ -333,6 +333,12 @@ class TransferMatrixProcessor:
 	# Purpose:
 	#	Demixes the eigenstructure.
 	#
+	# IMPORTANT NOTES:
+	#	-	Eigenstructure mixing is a potential problem that one can encounter when doing ULTRA-WIDEBAND DORT where one's targets
+	#		are resonant.
+	#	-	Eigenstructure mixing SHOULD NOT be an issue for the narrowband, closely spaced wavelengths we are probably working with here.
+	#	=	THIS CODE IS FLAWED.  See the comment in this method's code that says "IMPORTANT NOTE" for more information.
+	#
 	# Explanation:
 	#	When doing DORT (i.e. taking the SVD of the transfer matrix) over multiple wavelengths/frequencies, it is not guaranteed
 	#	that the i-th singular vector for each wavelength/frequency will correspond to the same scatterer.  This is problematic when trying
@@ -340,6 +346,7 @@ class TransferMatrixProcessor:
 	#	will be highly correlated (inner product between such vectors will be close to 1).  Thus, by looking at correlations/inner products,
 	#	one can ascertain which singular vectors belong to which scatterers.
 	#
+	# FOR MORE INFORMATION:
 	#	For more information on eigenstructure demixing, one can consult Dr. Sun K. Hong's work on the subject.
 	#	The relevant paper is titled "Effects of target resonances on ultrawideband-DORT".
 	#
@@ -350,6 +357,12 @@ class TransferMatrixProcessor:
 	#	matrixToDemix = 'V' --> demix with the right-singular vectors
 	@classmethod
 	def demixEigenstructure(cls, U : torch.Tensor, S : torch.Tensor, V : torch.Tensor, matrixToDemix : str = 'V', singValMagnitudeSimilarityThreshold : float = None):
+		print("")
+		print("")
+		print("IMPORTANT WARNING/NOTE:")
+		print("Eigenstructure demixing is being performed.  However, performing eigenstructure demixing may be unneccessary.  Furthermore, the current eigenstructure demixing code is flawed.  See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information.")
+		print("")
+
 		# Input checking
 		if (U.shape[0:4] != V.shape[0:4]):
 			raise Exception("'U' and 'V' matrices have incompatible dimensions.  They should both be the same size in the B, T, P, and C dimensions.")
@@ -392,7 +405,8 @@ class TransferMatrixProcessor:
 				curSingVal = tempS[0,i]
 				corrs[:,i] = corrs[:,i] * (tempS[1,:] >= ((1 - singValMagnitudeSimilarityThreshold) * curSingVal)) * (tempS[1,:] <= ((1+singValMagnitudeSimilarityThreshold) * curSingVal))
 
-		_, secondWavelengthInds = torch.max(corrs, 0)	# WARNING: This can allow for multiple of the same singular vector to be assigned to the same singular value
+		# IMPORTANT WARNING: This can allow for multiple of the same singular vector to be assigned to the same singular value
+		_, secondWavelengthInds = torch.max(corrs, 0)
 
 		# Demixing
 		newU = U.clone()

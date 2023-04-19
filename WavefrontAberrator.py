@@ -215,10 +215,16 @@ class RandomThicknessScreen(WavefrontAberrator):
 class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 	"""
 	Description:
-		Implements asdasfaasdasdadassdas
+		Implements the model described in Sections 7.1.1 and 8.2 in Statistical Optics (2nd Edition) by Joseph W. Goodman.
+			- Note that the transmittance function B(x, y) is NOT implemented.
+		Generates random heights using surface roughness statistics.
 	
 	References:
-		- asdsadasdasdasdasd
+		- Section 7.1.1 in Statistical Optics (2nd Edition) by Joseph W. Goodman
+		- "Optical quality of the eye lens surfaces from roughness and diffusion measurements" by Navarro et al
+			- This gives examples of surface roughness parameters
+		- https://www.newfor.net/wp-content/uploads/2015/02/DL15-NEWFOR_Roughness_state_of_the_art.pdf
+			- This defines correlation length
 	"""
 	def __init__(	self,
 					resolution						: list or tuple,
@@ -294,6 +300,16 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			self.modelReversed = None
 
 	def _initializeRandomHeights(self):
+		# This generates random heights based on the surface roughness parameters.
+		# The parameters are the standard deviation of the surface roughness heights and the correlation length.
+		# 	- Note that skew in the surface roughness height probability density functions (PDF) is NOT modeled here
+		#
+		# For more information on surface roughness, see:
+		# 	- "Optical quality of the eye lens surfaces from roughness and diffusion measurements" by Navarro et al
+		#		- This gives examples of surface roughness parameters
+		#	- https://www.newfor.net/wp-content/uploads/2015/02/DL15-NEWFOR_Roughness_state_of_the_art.pdf
+		#		- This defines correlation length
+
 		def generateRandomHeightsHelper1(filterSigma, kx, ky, padding, surfaceVariance, device):
 			heights0 = generateRandomHeightsHelper2(filterSigma, kx, ky, device)
 			heights1 = torch.zeros_like(heights0)
@@ -318,6 +334,7 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			return ht, ht_autocorr
 			
 		def generateRandomHeightsHelper2(filterSigma, kx, ky, device):
+			# NOTE: Asymmetry in roughness height PDF is NOT modeled here.
 			ht = torch.randn(kx.shape[-2], kx.shape[-1], dtype=torch.float, device=device)
 			H = WavefrontAberratorGenerator._generateGaussian(filterSigma, kx, ky, domain='frequency', device=self.device)
 			h = ift2(H, norm='backward').real
@@ -348,6 +365,7 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			# 	-	By looking at the Fourier transform pair for a Gaussian, it can be seen that letting filterSigma=self.correlationLength/2 results
 			# 		in the autocorrelation dropping to 1/e times its max value at a distance of self.correlationLength from the origin
 			# 		(assuming that X is a random signal drawn from a zero-mean Gaussian distribution).
+			#			- The 1/e comes from the definition of correlation length as defined in https://www.newfor.net/wp-content/uploads/2015/02/DL15-NEWFOR_Roughness_state_of_the_art.pdf
 			#	-	Note that the autocorrelation of the unfiltered phases will essentially be a delta function (i.e. a constant in frequency) so
 			#		the autocorrelation's shape will more-or-less be determined by H(e^{j\omega}).
 			#	-	Note that autocorrelation in this context refers to autocorrelation with means removed.

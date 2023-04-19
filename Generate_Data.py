@@ -85,14 +85,14 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.05*mm
+syntheticWavelength = 0.025*mm # 0.05*mm
 lambda1 = 1400*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
 wavelengths = [lambda1, lambda2]
 # wavelengths = [lambda1]
 
-inputRes = (768, 768)
+inputRes = (512, 512)
 inputSpacing = 6.4*um
 
 intermediateRes = (4096, 4096)	# (int(8*inputRes[0]), int(8*inputRes[0]))
@@ -105,8 +105,8 @@ outputSpacing = 1.85*um
 ################################################################################################################################
 
 
-inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 32, 32)
-outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 32, 32)
+inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
+outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
 
 pixelResolution, pixelSize = TransferMatrixProcessor._calculateMacropixelParameters(inputBoolMask)
 dx_pixel = pixelSize[0] * inputSpacing
@@ -158,8 +158,11 @@ scattererList = [
 					# Scatterer(location_x=0.3*mm, location_y=-0.3*mm, diameter=0.01*mm, scatteringResponse=0.7),
 					# Scatterer(location_x=-0.3*mm, location_y=0.3*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
-					Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+					# Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
+					# Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+
+					Scatterer(location_x=0.3*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.85),
+					Scatterer(location_x=-0.4*mm, location_y=0.35*mm, diameter=0.015*mm, scatteringResponse=0.8),
 				]
 
 # scattererDrawing = ScattererDrawing()
@@ -175,7 +178,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 4*mm #0.5*mm
+screenDist = 2.5*mm #0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
@@ -247,8 +250,9 @@ model = torch.nn.Sequential	(
 ################################################################################################################################
 
 
-# inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
-# outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
+# These are not needed.  They are defined earlier.
+	# inputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(inputRes[0], inputRes[1], 64, 64)
+	# outputBoolMask = TransferMatrixProcessor.getUniformSampleBoolMask(outputRes[0], outputRes[1], 64, 64)
 
 if True:
 	transferMtxMeasurer = TransferMatrixProcessor(	inputFieldPrototype=fieldIn,

@@ -187,12 +187,17 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 # dataFilePath = 'DATA/Experiment_2023-4-2_15h42m31s.pt'		# Two pointlike scatterers, aberrating layer
 # dataFilePath = 'DATA/Experiment_2023-4-2_17h18m18s.pt'		# Two pointlike scatterers, aberrating layer
 
-dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-2_20h49m48s.pt'		# Two pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/GOOD DATA/Experiment_2023-4-2_20h49m48s.pt'		# Two pointlike scatterers, aberrating layer
+
+dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-8_18h10m34s.pt'		# Two pointlike scatterers, aberrating layer
 
 ################################################################################################################################
 
-doSyntheticWavelengths = False
+doSyntheticWavelengths = True
 
+# IMPORTANT NOTE:
+#	You should probably set 'doEigenstructureDemixing' to False.
+#	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
 doEigenstructureDemixing = False
 singValMagnitudeSimilarityThreshold = 0.15
 
@@ -474,7 +479,9 @@ plt.ylim(-1, 1)
 # tempColor1 = 'red'
 # tempMarker1 = 'x'
 # tempSize1 = 160
-# plt.figure(2)
+# fout0 = get_field_slice(fieldOut_o1,channel_inds_range=0)
+# fout1 = get_field_slice(fieldOut_o1,channel_inds_range=1)
+# plt.figure(1123)
 # plt.clf()
 # plt.subplot(2,3,1)
 # fout0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
@@ -509,7 +516,9 @@ plt.ylim(-1, 1)
 # tempColor2 = 'red'
 # tempMarker2 = 'x'
 # tempSize2 = 160
-# plt.figure(3)
+# fout0 = get_field_slice(fieldOut_o1,channel_inds_range=0)
+# fout1 = get_field_slice(fieldOut_o1,channel_inds_range=1)
+# plt.figure(1124)
 # plt.clf()
 # plt.subplot(2,3,1)
 # fout0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
@@ -541,3 +550,44 @@ plt.ylim(-1, 1)
 # plt.ylabel('Position (mm)', fontsize=14)
 # plt.xlim(tempLim2a,tempLim2b)
 # plt.ylim(tempLim2a,tempLim2b)
+
+
+
+# tempLim1 = 1
+# tempColor1 = 'red'
+# tempMarker1 = 'x'
+# tempSize1 = 160
+# fout0 = get_field_slice(fieldOut_o1,channel_inds_range=0)
+# fout1 = get_field_slice(fieldOut_o1,channel_inds_range=1)
+# plt.figure(1124)
+# plt.clf()
+# plt.subplot(2,3,1)
+# fout0.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{backprop}(x,y;\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[0]*1e9),3)) + 'nm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer Location')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(-tempLim1,tempLim1)
+# plt.ylim(-tempLim1,tempLim1)
+# plt.subplot(2,3,2)
+# fieldOut.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.title('$u_{backprop,synth}(x,y;\Lambda = 0.05mm)$', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer Location')
+# plt.legend()
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(-tempLim1,tempLim1)
+# plt.ylim(-tempLim1,tempLim1)
+# plt.subplot(2,3,3)
+# fieldOut.visualize(flag_axis=True,cmap='turbo',plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+# plt.clim(100, 200)
+# plt.title('Scatterer Location Predictions', fontsize=16)
+# plt.scatter(scattererLocsY, scattererLocsX, s=tempSize1, marker=tempMarker1, color=tempColor1, edgecolor='none', label='Scatterer Location')
+# plt.scatter(0.385, 0.45, s=tempSize1, marker='s', linewidth=2, color='none', edgecolor='white', label='Predicted Location ($\lambda = ' + str(round(float(fieldIn.wavelengths.data_tensor[0]*1e9),3)) + 'nm$)')
+# plt.scatter(0.3855, 0.3953, s=tempSize1, marker='s', linewidth=2, color='none', edgecolor='orange', label='Predicted Location ($\Lambda = 0.05mm$)')
+# plt.legend(loc='lower left')
+# plt.xlabel('Position (mm)', fontsize=14)
+# plt.ylabel('Position (mm)', fontsize=14)
+# plt.xlim(0.3, 0.5)
+# plt.ylim(0.3, 0.5)
