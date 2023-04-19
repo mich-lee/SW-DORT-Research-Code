@@ -140,6 +140,11 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 
 ################################################################################################################################
 
+# aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
+# bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
+
+################################################################################################################################
+
 
 
 
@@ -152,11 +157,6 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 use_cuda = True
 gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
-
-################################################################################################################################
-
-# aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
-# bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
 
 ################################################################################################################################
 
