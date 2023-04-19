@@ -140,8 +140,9 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 
 ################################################################################################################################
 
-# aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
-# bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
+# Random code for Hadamard basis vectors:
+#	aaa = generateHadamardBasisVector(list(range(64*64)),64,64,1)
+#	bbb = torch.matmul(aaa.reshape(4096,4096), aaa.reshape(4096,4096).transpose(-2,-1))
 
 ################################################################################################################################
 
