@@ -161,8 +161,12 @@ scattererList = [
 					# Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
 					# Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=0.3*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.85),
-					Scatterer(location_x=-0.4*mm, location_y=0.35*mm, diameter=0.015*mm, scatteringResponse=0.8),
+					# Scatterer(location_x=0.3*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.85),
+					# Scatterer(location_x=-0.4*mm, location_y=0.35*mm, diameter=0.015*mm, scatteringResponse=0.8),
+
+					Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.73),
+					Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.82),
+					Scatterer(location_x=-0.35*mm, location_y=0*mm, diameter=0.015*mm, scatteringResponse=0.78),
 				]
 
 # scattererDrawing = ScattererDrawing()
@@ -178,7 +182,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 2.5*mm #0.5*mm
+screenDist = 3*mm #0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
@@ -191,13 +195,17 @@ wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev =
 wavefrontAberrator = wavefrontAberratorGen.get_model()
 wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
+f1 = 25*mm
+d1a = 100*mm
+d1b = 33*mm
 
 
 
-thinLens1 = Thin_Lens(focal_length=25*mm)
-asmProp1 = ASM_Prop(init_distance=100*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2_no_aberrator = ASM_Prop(init_distance=33*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=(33*mm - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+
+thinLens1 = Thin_Lens(focal_length=f1)
+asmProp1 = ASM_Prop(init_distance=d1a, do_ffts_inplace=do_ffts_inplace)
+asmProp2_no_aberrator = ASM_Prop(init_distance=d1b, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=(d1b - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
 asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,

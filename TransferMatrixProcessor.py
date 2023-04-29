@@ -334,9 +334,9 @@ class TransferMatrixProcessor:
 	#	Demixes the eigenstructure.
 	#
 	# IMPORTANT NOTES:
-	#	-	Eigenstructure mixing is a potential problem that one can encounter when doing ULTRA-WIDEBAND DORT where one's targets
+	#	-	Eigenstructure mixing is a potential problem that one can encounter when doing ultra-wideband DORT where one's targets
 	#		are resonant.
-	#	-	Eigenstructure mixing SHOULD NOT be an issue for the narrowband, closely spaced wavelengths we are probably working with here.
+	#	-	Eigenstructure mixing can be an issue for the narrowband, closely spaced wavelengths we are probably working with here.
 	#	=	THIS CODE IS FLAWED.  See the comment in this method's code that says "IMPORTANT NOTE" for more information.
 	#
 	# Explanation:

@@ -190,19 +190,22 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 # dataFilePath = 'DATA/GOOD DATA/Experiment_2023-4-2_20h49m48s.pt'		# Two pointlike scatterers, aberrating layer
 
-dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-8_18h10m34s.pt'		# Two pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-8_18h10m34s.pt'		# Two pointlike scatterers, aberrating layer
+
+# dataFilePath = 'DATA/Temp/Experiment_2023-4-21_14h52m56s.pt'		# Two pointlike scatterers, aberrating layer
+dataFilePath = 'DATA/Temp/Experiment_2023-4-21_16h46m19s.pt'		# Two pointlike scatterers, aberrating layer
 
 ################################################################################################################################
 
 doSyntheticWavelengths = True
 
 # IMPORTANT NOTE:
-#	You should probably set 'doEigenstructureDemixing' to False.
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
-doEigenstructureDemixing = False
+doEigenstructureDemixing = True
 singValMagnitudeSimilarityThreshold = 0.15
 
 doPlotting = True
+plotScatterers = False
 
 ################################################################################################################################
 
@@ -266,8 +269,8 @@ preScattereModel, scattererModel, inputModel, backpropModel = getInputAndBackpro
 # Plot settings
 nCols1 = 3
 nRows1 = 2
-xLims1 = [-3, 3]
-yLims1 = [-3, 3]
+xLims1 = [-1, 1]
+yLims1 = [-1, 1]
 coordsMultiplier1 = 1e3	# Scale for millimeters
 
 # Deriving some quantities
@@ -374,7 +377,8 @@ for singVecNum in range(500):
 
 	plt.subplot(nRows1, nCols1, subplotNum)
 	fieldOut.visualize(flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE, cmap='turbo')
-	plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+	if plotScatterers:
+		plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	plt.xlim(xLims1)
 	plt.ylim(yLims1)
 	plt.title("$\Lambda$ - Singular Value #" + str(singVecNum + 1))
