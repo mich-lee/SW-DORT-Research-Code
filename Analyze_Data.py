@@ -192,8 +192,13 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 # dataFilePath = 'DATA/GOOD DATA/GREAT/Experiment_2023-4-8_18h10m34s.pt'		# Two pointlike scatterers, aberrating layer
 
+
 # dataFilePath = 'DATA/Temp/Experiment_2023-4-21_14h52m56s.pt'		# Two pointlike scatterers, aberrating layer
-dataFilePath = 'DATA/Temp/Experiment_2023-4-21_16h46m19s.pt'		# Two pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/Temp/Experiment_2023-4-21_16h46m19s.pt'		# Two pointlike scatterers, aberrating layer
+
+
+# dataFilePath = 'DATA/Temp2/Experiment_2023-4-28_20h59m03s.pt'		# Line, no aberrating layer
+dataFilePath = 'DATA/Temp2/Experiment_2023-4-30_19h03m11s.pt'		# Line, aberrating layer
 
 ################################################################################################################################
 

@@ -336,7 +336,7 @@ class TransferMatrixProcessor:
 	# IMPORTANT NOTES:
 	#	-	Eigenstructure mixing is a potential problem that one can encounter when doing ultra-wideband DORT where one's targets
 	#		are resonant.
-	#	-	Eigenstructure mixing can be an issue for the narrowband, closely spaced wavelengths we are probably working with here.
+	#	-	Eigenstructure mixing can also be an issue for the narrowband, closely spaced wavelengths we are probably working with here.
 	#	=	THIS CODE IS FLAWED.  See the comment in this method's code that says "IMPORTANT NOTE" for more information.
 	#
 	# Explanation:
@@ -360,7 +360,7 @@ class TransferMatrixProcessor:
 		print("")
 		print("")
 		print("IMPORTANT WARNING/NOTE:")
-		print("Eigenstructure demixing is being performed.  However, performing eigenstructure demixing may be unneccessary.  Furthermore, the current eigenstructure demixing code is flawed.  See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information.")
+		print("Eigenstructure demixing is being performed.  However, the current eigenstructure demixing code is flawed.  See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information.")
 		print("")
 
 		# Input checking

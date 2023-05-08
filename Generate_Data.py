@@ -137,44 +137,48 @@ print()
 
 do_ffts_inplace = True
 
-scattererList = [
-						# Scatterer(location_x=-1.44*mm, location_y=-1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
-						# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
+# scattererList = [
+# 						# Scatterer(location_x=-1.44*mm, location_y=-1.44*mm, diameter=0.08*mm, scatteringResponse=0.7),
+# 						# Scatterer(location_x=1.44*mm, location_y=1.44*mm, diameter=0.1*mm, scatteringResponse=0.8),
 
-						# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
-						# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
+# 						# Scatterer(location_x=-0.5*mm, location_y=-0.5*mm, diameter=0.04*mm, scatteringResponse=0.7),
+# 						# Scatterer(location_x=0.5*mm, location_y=0.5*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-						# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
+# 						# Scatterer(location_x=(2*np.random.rand() - 1)*1.44*mm, location_y=(2*np.random.rand() - 1)*1.44*mm, diameter=0.08*mm, scatteringResponse=0.8),
 
-						# Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
-						# Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
+# 						# Scatterer(location_x=-0.555*mm, location_y=-0.555*mm, diameter=0.04*mm, scatteringResponse=0.7),
+# 						# Scatterer(location_x=0.555*mm, location_y=0.555*mm, diameter=0.05*mm, scatteringResponse=0.8),
 
-					# Scatterer(location_x=-0.4*mm, location_y=-0.4*mm, diameter=0.02*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.03*mm, scatteringResponse=0.8),
+# 					# Scatterer(location_x=-0.4*mm, location_y=-0.4*mm, diameter=0.02*mm, scatteringResponse=0.7),
+# 					# Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.03*mm, scatteringResponse=0.8),
 
-					# Scatterer(location_x=0.35*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=-0.35*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+# 					# Scatterer(location_x=0.35*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
+# 					# Scatterer(location_x=-0.35*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					# Scatterer(location_x=0.3*mm, location_y=-0.3*mm, diameter=0.01*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=-0.3*mm, location_y=0.3*mm, diameter=0.015*mm, scatteringResponse=0.8),
+# 					# Scatterer(location_x=0.3*mm, location_y=-0.3*mm, diameter=0.01*mm, scatteringResponse=0.7),
+# 					# Scatterer(location_x=-0.3*mm, location_y=0.3*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					# Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
-					# Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
+# 					# Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.7),
+# 					# Scatterer(location_x=-0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					# Scatterer(location_x=0.3*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.85),
-					# Scatterer(location_x=-0.4*mm, location_y=0.35*mm, diameter=0.015*mm, scatteringResponse=0.8),
+# 					# Scatterer(location_x=0.3*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.85),
+# 					# Scatterer(location_x=-0.4*mm, location_y=0.35*mm, diameter=0.015*mm, scatteringResponse=0.8),
 
-					Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.73),
-					Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.82),
-					Scatterer(location_x=-0.35*mm, location_y=0*mm, diameter=0.015*mm, scatteringResponse=0.78),
-				]
+# 					Scatterer(location_x=0.4*mm, location_y=-0.4*mm, diameter=0.01*mm, scatteringResponse=0.73),
+# 					Scatterer(location_x=0.4*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.82),
+# 					Scatterer(location_x=-0.35*mm, location_y=0*mm, diameter=0.015*mm, scatteringResponse=0.78),
+# 				]
 
-# scattererDrawing = ScattererDrawing()
-# 	# scattererDrawing.drawLine(-0.3*mm, 0, 0.3*mm, 0, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-# scattererDrawing.drawLine(-0.35*mm, -0.3*mm, 0.35*mm, -0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-# scattererDrawing.drawLine(0.35*mm, -0.3*mm, -0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-# scattererDrawing.drawLine(-0.35*mm, 0.3*mm, 0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
-# scattererList = scattererDrawing.getScattererList()
+scattererDrawing = ScattererDrawing()
+scattererDrawing.drawLine(-0.3*mm, 0, 0.3*mm, 0, 200, 0.01*mm, 0.01*mm, 0.79, 0.8)
+	# scattererDrawing.drawLine(-0.3*mm, 0, 0.3*mm, 0, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+		# scattererDrawing.drawLine(-0.35*mm, -0.3*mm, 0.35*mm, -0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+		# scattererDrawing.drawLine(0.35*mm, -0.3*mm, -0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+		# scattererDrawing.drawLine(-0.35*mm, 0.3*mm, 0.35*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
+	# scattererDrawing.drawLine(-0.35*mm, -0.3*mm, 0.35*mm, -0.3*mm, 200, 0.01*mm, 0.01*mm, 0.79, 0.8)
+	# scattererDrawing.drawLine(0.35*mm, -0.3*mm, -0.35*mm, 0.3*mm, 200, 0.01*mm, 0.01*mm, 0.79, 0.8)
+	# scattererDrawing.drawLine(-0.35*mm, 0.3*mm, 0.35*mm, 0.3*mm, 200, 0.01*mm, 0.01*mm, 0.79, 0.8)
+scattererList = scattererDrawing.getScattererList()
 
 inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
 scattererModel = ScattererModel(scattererList)
