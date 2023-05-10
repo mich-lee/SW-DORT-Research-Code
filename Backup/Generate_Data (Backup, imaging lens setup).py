@@ -190,7 +190,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 3*mm #5*mm #3*mm #0.5*mm
+screenDist = 5*mm #3*mm #0.5*mm
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
@@ -203,9 +203,9 @@ wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev =
 wavefrontAberrator = wavefrontAberratorGen.get_model()
 wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
-f1 = 50*mm
-d1a = 50*mm
-d1b = 50*mm
+f1 = 25*mm
+d1a = 100*mm
+d1b = 33*mm
 
 
 

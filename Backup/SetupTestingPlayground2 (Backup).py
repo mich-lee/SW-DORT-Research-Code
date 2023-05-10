@@ -73,7 +73,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.025*mm #0.05*mm
+syntheticWavelength = 0.05*mm
 lambda1 = 1400*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
@@ -123,12 +123,12 @@ vecInGridX = (vecInGridX / vecIn.shape[0]).to(device=device)
 vecInGridY = (vecInGridY / vecIn.shape[1]).to(device=device)
 
 vecIn[...] = 0
-# vecIn[...] = 1
+vecIn[...] = 1
 # vecIn[2, 2] = 1
 # vecIn[-2, -2] = 1
 # vecIn[...] = torch.exp(1j*2*np.pi * (31*vecInGridX + 0*vecInGridY))
 # vecIn[...] = vecIn[...] + torch.exp(1j*2*np.pi * (0*vecInGridX + 24*vecInGridY))
-vecIn[...] = vecIn[...] + torch.exp(1j*2*np.pi * (0*vecInGridX + 17*vecInGridY))
+# vecIn[...] = vecIn[...] + torch.exp(1j*2*np.pi * (0*vecInGridX + 17*vecInGridY))
 # vecIn[...] = vecIn[...] + torch.exp(1j*2*np.pi * (0*vecInGridX + 8*vecInGridY))
 
 
@@ -188,19 +188,18 @@ wavefrontAberratorReverse = wavefrontAberratorGen.get_model_reversed()
 
 
 
-thinLens1 = Thin_Lens(focal_length=50*mm)
-asmProp1 = ASM_Prop(init_distance=50*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp2_no_aberrator = ASM_Prop(init_distance=33*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp2 = ASM_Prop(init_distance=(33*mm - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
-# asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
+thinLens1 = Thin_Lens(focal_length=25*mm)
+asmProp1 = ASM_Prop(init_distance=100*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2_no_aberrator = ASM_Prop(init_distance=33*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=(33*mm - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
 								# Ideal_Imaging_Lens(focal_length=50*mm, object_dist=52.5*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
 								asmProp1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								thinLens1,
-								asmProp1,
-								# asmProp2_no_aberrator,
+								asmProp2_no_aberrator,
 								# asmProp2,
 								# wavefrontAberrator,
 								# asmProp3,
@@ -208,8 +207,7 @@ model = torch.nn.Sequential	(
 								# asmProp3,
 								# wavefrontAberratorReverse,
 								# asmProp2,
-								# asmProp2_no_aberrator,
-								asmProp1,
+								asmProp2_no_aberrator,
 								thinLens1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								asmProp1,
@@ -226,8 +224,8 @@ fieldOut = model(fieldIn)
 outputs = getSequentialModelOutputSequence(model=model, recursive=True)
 
 # plotModelOutputSequence(outputs=outputs, inputField=fieldIn, channel_inds_range=0, rescale_factor=1, plot_xlims=(-0.075,0.075), plot_ylims=(-0.075,0.075))
-plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0)
-# plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0, rescale_factor=0.25)
+# plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0)
+plotModelOutputSequence(outputs=outputs, inputField=fieldIn, componentSequenceList=modelComponentSequence, channel_inds_range=0, rescale_factor=0.25)
 
 
 
@@ -243,8 +241,7 @@ synthField = ElectricField(
 synthField.wavelengths.to(device)
 synthField.spacing.to(device)
 
-# fieldOutSynth = asmProp2_no_aberrator(synthField)
-fieldOutSynth = asmProp1(synthField)
+fieldOutSynth = asmProp2_no_aberrator(synthField)
 
 plt.figure(10)
 plt.clf()

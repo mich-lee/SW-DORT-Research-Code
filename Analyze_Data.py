@@ -195,10 +195,14 @@ device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 
 # dataFilePath = 'DATA/Temp/Experiment_2023-4-21_14h52m56s.pt'		# Two pointlike scatterers, aberrating layer
 # dataFilePath = 'DATA/Temp/Experiment_2023-4-21_16h46m19s.pt'		# Two pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/Temp/Experiment_2023-5-8_16h28m22s.pt'		# Three pointlike scatterers, aberrating layer
 
 
 # dataFilePath = 'DATA/Temp2/Experiment_2023-4-28_20h59m03s.pt'		# Line, no aberrating layer
-dataFilePath = 'DATA/Temp2/Experiment_2023-4-30_19h03m11s.pt'		# Line, aberrating layer
+# dataFilePath = 'DATA/Temp2/Experiment_2023-4-30_19h03m11s.pt'		# Line, aberrating layer
+
+# dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_12h50m22s.pt'		# Three pointlike scatterers, no aberrating layer
+dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'		# Three pointlike scatterers, aberrating layer
 
 ################################################################################################################################
 
@@ -210,7 +214,7 @@ doEigenstructureDemixing = True
 singValMagnitudeSimilarityThreshold = 0.15
 
 doPlotting = True
-plotScatterers = False
+plotScatterers = True
 
 ################################################################################################################################
 
@@ -343,13 +347,13 @@ for singVecNum in range(500):
 	# temp0[temp0.abs() < 0.9 * temp0Max] = 0
 	temp0[temp0.abs() < 0.99 * temp0Max] = 0
 
-	imgField0 = torch.maximum(imgField0, w[i] * temp0.abs())
-	imgField1 = imgField1 + (w[i] * temp0.abs())
+	imgField0 = torch.maximum(imgField0, w[singVecNum] * temp0.abs())
+	imgField1 = imgField1 + (w[singVecNum] * temp0.abs())
 	imgField2 = torch.maximum(imgField2, temp0.abs())
 	imgField3 = imgField3 + temp0.abs()
 
 	temp0[...] = fieldOut.data
-	imgField4 = imgField4 + (w[i] * temp0)
+	imgField4 = imgField4 + (w[singVecNum] * temp0)
 	imgField5 = imgField5 + temp0.abs()
 
 
@@ -420,12 +424,12 @@ pass
 
 
 
-a1 = fieldOut.detach().cpu()
-a1.data = imgField
-plt.clf()
-a1.visualize(flag_axis=True,cmap='turbo')
-plt.xlim(-1, 1)
-plt.ylim(-1, 1)
+# a1 = fieldOut.detach().cpu()
+# a1.data = imgField
+# plt.clf()
+# a1.visualize(flag_axis=True,cmap='turbo')
+# plt.xlim(-1, 1)
+# plt.ylim(-1, 1)
 
 
 
@@ -444,6 +448,12 @@ plt.ylim(-1, 1)
 # plt.ylim(-1, 1)
 
 
+
+
+# plt.clf()
+# aaa = get_field_slice(model[0:7](fieldIn), channel_inds_range=0)
+# aaa.visualize(flag_axis=True)
+# plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')
 
 
 # a = torch.zeros(synthFields[0].data.shape).cuda()
