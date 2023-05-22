@@ -208,6 +208,8 @@ dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'		# Three pointlike 
 
 doSyntheticWavelengths = True
 
+nonSyntheticWavelengthSelectionIndex = 0	# Only relevant if doSyntheticWavelengths = False
+
 # IMPORTANT NOTE:
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
 doEigenstructureDemixing = True
@@ -329,7 +331,7 @@ for singVecNum in range(500):
 		fieldOut = backpropModel(synthField)
 	else:
 		# fieldOut = fieldOut_o1[:,:,:,0,:,:]
-		fieldOut = get_field_slice(fieldOut_o1, channel_inds_range=0)
+		fieldOut = get_field_slice(fieldOut_o1, channel_inds_range=nonSyntheticWavelengthSelectionIndex)
 
 
 	if imgField0 is None:
@@ -454,6 +456,39 @@ pass
 # aaa = get_field_slice(model[0:7](fieldIn), channel_inds_range=0)
 # aaa.visualize(flag_axis=True)
 # plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')
+
+
+
+
+
+
+
+# Experimental backpropagation.
+# Attempting to do the process described in Figure 1a of the paper "Fast non-line-of-sight imaging with high-resolution and wide field of view using synthetic wavelength holography".
+# Run this in the debug console right after o1 and fieldOut_o1 are computed.
+
+# This combination of backpropModel.z signs and conjugation of data seems to work the best for some reason.
+#		Feel free to experiment though.
+
+	# syntheticWavelength = 0.05*mm # 0.05*mm
+	# lambda1 = 1400*nm
+	# lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
+	# fieldIn.data[...] = 1
+	# fieldIn.wavelengths.data_tensor = torch.tensor([lambda1, lambda2], device=fieldIn.wavelengths.data_tensor.device)
+
+	# inputModel = model[0:11]
+	# backpropModel.z = -backpropModel.z.abs()
+	# backpropModel.prop_kernel = None
+
+	# o1 = inputModel(fieldIn)
+
+	# o1.data = o1.data.conj()
+
+	# fieldOut_o1 = backpropModel(o1)
+
+
+
+
 
 
 # a = torch.zeros(synthFields[0].data.shape).cuda()

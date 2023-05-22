@@ -191,11 +191,15 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
 screenDist = 3*mm #5*mm #3*mm #0.5*mm
+
+# The "surfaceVariationStdDev" and "correlationLength" values came from the 400SA diffuser in Table 4 of
+#	"Optical quality of the eye lens surfaces from roughness and diffusion measurements" by Navarro et al.
 wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev = 1.3*um,
 														correlationLength = 8.8*um,
 														maxThickness = 200*um,
 														n_screen = 1.52,
 														generateBidirectional = True,
+														doubleSidedRoughness = True,
 														resolution = intermediateRes,
 														elementSpacings = [intermediateSpacing, intermediateSpacing],
 														device = device
@@ -213,8 +217,8 @@ d1b = 50*mm
 thinLens1 = Thin_Lens(focal_length=f1)
 asmProp1 = ASM_Prop(init_distance=d1a, do_ffts_inplace=do_ffts_inplace)
 asmProp2_no_aberrator = ASM_Prop(init_distance=d1b, do_ffts_inplace=do_ffts_inplace)
-asmProp2 = ASM_Prop(init_distance=(d1b - screenDist), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
-asmProp3 = ASM_Prop(init_distance=(screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)
+asmProp2 = ASM_Prop(init_distance=(d1b - screenDist - wavefrontAberratorGen.maxThickness), do_ffts_inplace=do_ffts_inplace)#36*mm, do_ffts_inplace=do_ffts_inplace)
+asmProp3 = ASM_Prop(init_distance=screenDist, do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
 								# Ideal_Imaging_Lens(focal_length=50*mm, object_dist=52.5*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),

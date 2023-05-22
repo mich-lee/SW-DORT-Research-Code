@@ -215,7 +215,7 @@ class RandomThicknessScreen(WavefrontAberrator):
 class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 	"""
 	Description:
-		Implements the model described in Sections 7.1.1 and 8.2 in Statistical Optics (2nd Edition) by Joseph W. Goodman.
+		Implements the model described in Sections 7.1.1 and Equation 8.2-2 in Section 8.2 in Statistical Optics (2nd Edition) by Joseph W. Goodman.
 			- Note that the transmittance function B(x, y) is NOT implemented.
 		Generates random heights using surface roughness statistics.
 	
@@ -236,7 +236,7 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 					minThickness					: float = 0,
 					thicknessVariationMaxRange		: float = None,
 					n_ambient						: float = 1,	# Assume free space
-					doubleSidedRoughness			: bool = False,
+					doubleSidedRoughness			: bool = True,
 					reuseScreenForBidirectional		: bool = True,
 					generateBidirectional			: bool = False,
 					device							: torch.device = None,
@@ -362,6 +362,8 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 		for _ in range(2):
 			# The 'filterSigma' argument is set to self.correlationLength/2.  This was obtained by considering that autocorrelation is
 			# |H(e^{j\omega})|^2\Phi_{xx}(e^{j\omega}) in frequency, and the filter H is Gausssian in this case.
+			#	-	Note that the Phi_{xx}(...) terms should be a constant since the autocorrelation of uncorrelated stationary noise should (I believe)
+			#		be an impulse in time/space (and hence a constant in frequency)
 			# 	-	By looking at the Fourier transform pair for a Gaussian, it can be seen that letting filterSigma=self.correlationLength/2 results
 			# 		in the autocorrelation dropping to 1/e times its max value at a distance of self.correlationLength from the origin
 			# 		(assuming that X is a random signal drawn from a zero-mean Gaussian distribution).
@@ -370,6 +372,13 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 			#		the autocorrelation's shape will more-or-less be determined by H(e^{j\omega}).
 			#	-	Note that autocorrelation in this context refers to autocorrelation with means removed.
 			heightsTemp, heightAutocorrTemp = generateRandomHeightsHelper1(self.correlationLength / 2, kxTemp, kyTemp, padding, self.surfaceVariationVariance, self.device)
+
+			# Can test to make sure that the correlation length is okay using this code:
+				# N = 35
+				# heightsTemp, heightAutocorrTemp = generateRandomHeightsHelper1(N*self.elementSpacings[0] / 2, kxTemp, kyTemp, padding, self.surfaceVariationVariance, self.device)
+				# plt.imshow((heightAutocorrTemp * (heightAutocorrTemp >= heightAutocorrTemp.max() / np.exp(1))).cpu())
+			# Should see (max autocorrelation)*1/e reached at around N units from the center on the plot
+			# Behavior less reliable for larger N, however
 
 			heightVariationCutoff = self.thicknessVariationMaxRange / 2
 			heightsTemp = torch.clamp(heightsTemp, -heightVariationCutoff, heightVariationCutoff)
