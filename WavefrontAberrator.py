@@ -236,7 +236,7 @@ class RandomThicknessScreenGenerator(WavefrontAberratorGenerator):
 					minThickness					: float = 0,
 					thicknessVariationMaxRange		: float = None,
 					n_ambient						: float = 1,	# Assume free space
-					doubleSidedRoughness			: bool = True,
+					doubleSidedRoughness			: bool = False,
 					reuseScreenForBidirectional		: bool = True,
 					generateBidirectional			: bool = False,
 					device							: torch.device = None,
