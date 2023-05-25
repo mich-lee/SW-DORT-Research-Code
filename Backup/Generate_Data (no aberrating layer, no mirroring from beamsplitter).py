@@ -8,8 +8,9 @@ import copy
 import datetime
 import os
 
-sys.path.append("holotorch-lib/")
-sys.path.append("holotorch-lib/holotorch")
+sys.path.append(os.path.dirname(__file__) + "\\..\\")
+sys.path.append(os.path.dirname(__file__) + "\\..\\holotorch-lib\\")
+sys.path.append(os.path.dirname(__file__) + "\\..\\holotorch-lib\\holotorch")
 
 import holotorch.utils.Dimensions as Dimensions
 from holotorch.utils.Enumerators import *
@@ -27,7 +28,6 @@ from holotorch.Optical_Components.Four_F_system import Four_F_system
 from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 # from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Radial_Optical_Aperture import Radial_Optical_Aperture
-from holotorch.Optical_Components.Field_Mirrorer import Field_Mirrorer
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 from holotorch.Optical_Setups.Ideal_Imaging_Lens import Ideal_Imaging_Lens
@@ -191,7 +191,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 3*mm #5*mm #3*mm #0.5*mm
+screenDist = 5*mm #5*mm #3*mm #0.5*mm
 
 # The "surfaceVariationStdDev" and "correlationLength" values came from the 400SA diffuser in Table 4 of
 #	"Optical quality of the eye lens surfaces from roughness and diffusion measurements" by Navarro et al.
@@ -222,23 +222,21 @@ asmProp2 = ASM_Prop(init_distance=(d1b - screenDist - wavefrontAberratorGen.maxT
 asmProp3 = ASM_Prop(init_distance=screenDist, do_ffts_inplace=do_ffts_inplace)
 model = torch.nn.Sequential	(
 								inputResampler,
-								# Ideal_Imaging_Lens(focal_length=50*mm, object_dist=52.5*mm, interpolationMode='bicubic', rescaleCoords=False, device=device),
 								asmProp1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								thinLens1,
-								# asmProp2_no_aberrator,
-								asmProp2,
-								wavefrontAberrator,
-								asmProp3,
+								asmProp2_no_aberrator,
+								# asmProp2,
+								# wavefrontAberrator,
+								# asmProp3,
 								scattererModel,
-								asmProp3,
-								wavefrontAberratorReverse,
-								asmProp2,
-								# asmProp2_no_aberrator,
+								# asmProp3,
+								# wavefrontAberratorReverse,
+								# asmProp2,
+								asmProp2_no_aberrator,
 								thinLens1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								asmProp1,
-								Field_Mirrorer(mirror_horizontal=True, mirror_vertical=False),	# For modeling the mirroring applied by a beamsplitter
 								Ideal_Imaging_Lens(focal_length=10*mm, object_dist=250*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
 								outputResampler
 							)

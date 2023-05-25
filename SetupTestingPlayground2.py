@@ -27,6 +27,7 @@ from holotorch.Optical_Components.Four_F_system import Four_F_system
 from holotorch.Optical_Components.Thin_Lens import Thin_Lens
 # from holotorch.Optical_Components.SimpleMask import SimpleMask
 from holotorch.Optical_Components.Radial_Optical_Aperture import Radial_Optical_Aperture
+from holotorch.Optical_Components.Field_Mirrorer import Field_Mirrorer
 from holotorch.Optical_Components.Field_Padder_Unpadder import Field_Padder_Unpadder
 from holotorch.Optical_Components.Field_Resampler import Field_Resampler
 from holotorch.Optical_Setups.Ideal_Imaging_Lens import Ideal_Imaging_Lens
@@ -213,6 +214,7 @@ model = torch.nn.Sequential	(
 								thinLens1,
 								Radial_Optical_Aperture(aperture_radius=5*mm),
 								asmProp1,
+								Field_Mirrorer(mirror_horizontal=True, mirror_vertical=False),	# For modeling the mirroring applied by a beamsplitter
 								Ideal_Imaging_Lens(focal_length=10*mm, object_dist=250*mm, interpolationMode='bicubic', rescaleCoords=True, device=device),
 								outputResampler
 							)
