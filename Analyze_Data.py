@@ -90,7 +90,10 @@ def getInputAndBackpropagationModels(model : torch.nn.Sequential):
 			if issubclass(type(cur), Propagator):
 				totalDist = totalDist + cur.z
 				if (type(cur) is ASM_Prop) and (asmStateDict is None):
-					asmStateDict = cur.__dict__
+					asmStateDict = copy.deepcopy(cur).__dict__	# copy.deepcopy(cur) was done because when "prop.__setstate__(asmStateDict)"" is called, prop shares its fields
+																# with the copy (i.e. the fields have the same pointer).  If copy.deepcopy(cur) was not called, modifying prop's
+																# fields later (e.g. the "prop.z = totalDist" and "prop.prop_kernel = None" lines) would modify the fields of a
+																# component in the original model, which is undesirable (mainly, overwriting the 'z' field is undesirable).
 			elif issubclass(type(cur), WavefrontAberrator):
 				totalDist = totalDist + cur.get_thickness()
 			else:

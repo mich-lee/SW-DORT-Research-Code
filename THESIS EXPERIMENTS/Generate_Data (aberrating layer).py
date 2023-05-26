@@ -87,7 +87,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 ################################################################################################################################
 
 
-syntheticWavelength = 0.025*mm # 0.05*mm
+syntheticWavelength = 0.025*mm #0.025*mm # 0.05*mm
 lambda1 = 1350*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
@@ -150,7 +150,7 @@ memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
 outputResampler = Field_Resampler(outputHeight=outputRes[0], outputWidth=outputRes[1], outputPixel_dx=outputSpacing, outputPixel_dy=outputSpacing, device=device)
 
-screenDist = 5*mm #5*mm #3*mm #0.5*mm
+screenDist = 3*mm #5*mm #3*mm #0.5*mm
 
 # The "surfaceVariationStdDev" and "correlationLength" values came from the 400SA diffuser in Table 4 of
 #	"Optical quality of the eye lens surfaces from roughness and diffusion measurements" by Navarro et al.
