@@ -221,17 +221,19 @@ use_cuda = True
 gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 ################################################################################################################################
-dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-25_22h59m40s.pt'		# Three pointlike scatterers, aberrating layer
+# dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'
+dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-27_15h20m47s.pt'
 ################################################################################################################################
 # IMPORTANT NOTE:
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
-doEigenstructureDemixing = True
+doEigenstructureDemixing = False
 singValMagnitudeSimilarityThreshold = 0.15
 ################################################################################################################################
 # Plot settings
 xLims1 = [-1, 1]
 yLims1 = [-1, 1]
 coordsMultiplier1 = 1e3	# Scale for millimeters
+numToPlot = 6
 ################################################################################################################################
 ################################################################################################################################
 
@@ -306,7 +308,7 @@ for i in range(len(scattererModel.scatterers)):
 
 
 plt.figure(1)
-for i in range(6):
+for i in range(numToPlot):
 	vecIn = V[... , :, i]
 	fieldIn, _, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
 												samplingBoolMask=inputBoolMask,
@@ -314,9 +316,9 @@ for i in range(6):
 												inputModel=inputModel, backpropModel=backpropModel,
 												doSyntheticWavelengths=False
 											)
-	plt.subplot(2, 6, i + 1)
+	plt.subplot(2, numToPlot, i + 1)
 	get_field_slice(fieldIn, channel_inds_range=0).visualize(cmap='turbo', flag_axis=True)
-	plt.subplot(2, 6, 6 + i + 1)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
 	visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=0),
 									xLims=xLims1, yLims=yLims1, 
 									titleStr="Right Singular Vector #" + str(i + 1),
@@ -325,7 +327,7 @@ for i in range(6):
 	
 
 plt.figure(2)
-for i in range(6):
+for i in range(numToPlot):
 	vecIn = V[... , :, i]
 	fieldIn, _, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
 												samplingBoolMask=inputBoolMask,
@@ -333,9 +335,9 @@ for i in range(6):
 												inputModel=inputModel, backpropModel=backpropModel,
 												doSyntheticWavelengths=False
 											)
-	plt.subplot(2, 6, i + 1)
+	plt.subplot(2, numToPlot, i + 1)
 	get_field_slice(fieldIn, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True)
-	plt.subplot(2, 6, 6 + i + 1)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
 	visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=1),
 									xLims=xLims1, yLims=yLims1, 
 									titleStr="Right Singular Vector #" + str(i + 1),
@@ -344,7 +346,7 @@ for i in range(6):
 	
 
 plt.figure(3)
-for i in range(6):
+for i in range(numToPlot):
 	vecIn = V[... , :, i]
 	_, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
 												samplingBoolMask=inputBoolMask,
@@ -352,9 +354,9 @@ for i in range(6):
 												inputModel=inputModel, backpropModel=backpropModel,
 												doSyntheticWavelengths=True
 											)
-	plt.subplot(2, 6, i + 1)
+	plt.subplot(2, numToPlot, i + 1)
 	backpropModelInputField.visualize(cmap='turbo', flag_axis=True)
-	plt.subplot(2, 6, 6 + i + 1)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
 	visualizeScattererPlaneField(	field=fieldOut,
 									xLims=xLims1, yLims=yLims1, 
 									titleStr="Right Singular Vector #" + str(i + 1),

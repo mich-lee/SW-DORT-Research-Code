@@ -200,7 +200,7 @@ wavefrontAberratorGen = RandomThicknessScreenGenerator(	surfaceVariationStdDev =
 														maxThickness = 200*um,
 														n_screen = 1.52,
 														generateBidirectional = True,
-														doubleSidedRoughness = True,
+														doubleSidedRoughness = False,
 														resolution = intermediateRes,
 														elementSpacings = [intermediateSpacing, intermediateSpacing],
 														device = device
