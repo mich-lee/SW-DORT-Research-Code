@@ -328,7 +328,7 @@ for i in range(numToPlot):
 	plt.subplot(2, numToPlot, numToPlot + i + 1)
 	get_field_slice(fieldIn, channel_inds_range=0).visualize(cmap='twilight', flag_axis=True, plot_type=ENUM_PLOT_TYPE.PHASE)
 	plt.title(r"From right singular vector #%d (Phase)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9), fontsize=subplotTitleFontSize)
-	
+
 	plt.figure(2)
 	plt.subplot(2, numToPlot, i + 1)
 	get_field_slice(fieldIn, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
@@ -348,13 +348,33 @@ for i in range(numToPlot):
 									plot_cmap='turbo'
 								)
 	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=0),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d (Phase)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.PHASE,
+									plot_cmap='twilight'
+								)
+	
+	plt.figure(4)
+	plt.subplot(2, numToPlot, i + 1)
 	visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=1),
 									xLims=xLims1, yLims=yLims1,
-									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[1]) * 1e9),
+									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
 									titleFontSize=subplotTitleFontSize,
 									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
 									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
 									plot_cmap='turbo'
+								)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=1),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d (Phase)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.PHASE,
+									plot_cmap='twilight'
 								)
 
 
@@ -363,6 +383,8 @@ plt.suptitle("Input fields from right singular vectors", fontsize=24, fontweight
 plt.figure(2)
 plt.suptitle("Input fields from right singular vectors", fontsize=24, fontweight="bold")
 plt.figure(3)
+plt.suptitle("Scatterer plane fields from backpropagated right singular vectors", fontsize=24, fontweight="bold")
+plt.figure(4)
 plt.suptitle("Scatterer plane fields from backpropagated right singular vectors", fontsize=24, fontweight="bold")
 
 
@@ -384,12 +406,15 @@ for i in range(numToPlot):
 												inputModel=inputModel, backpropModel=backpropModel,
 												doSyntheticWavelengths=True
 											)
-	plt.figure(4)
+	plt.figure(5)
 	plt.subplot(2, numToPlot, i + 1)
 	backpropModelInputField.visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	backpropModelInputField.visualize(cmap='twilight', flag_axis=True, plot_type=ENUM_PLOT_TYPE.PHASE)
+	plt.title(r"From the %s right singular vectors (Phase)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 
-	plt.figure(5)
+	plt.figure(6)
 	plt.subplot(2, numToPlot, i + 1)
 	visualizeScattererPlaneField(	field=fieldOut,
 									xLims=xLims1, yLims=yLims1, 
@@ -400,12 +425,22 @@ for i in range(numToPlot):
 									plot_cmap='turbo'
 								)
 	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	visualizeScattererPlaneField(	field=fieldOut,
+									xLims=xLims1, yLims=yLims1, 
+									titleStr="From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.PHASE,
+									plot_cmap='twilight'
+								)
+	plt.title(r"From the %s right singular vectors (PHASE)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 
 
-plt.figure(4)
-plt.suptitle("Synthetic fields to be backpropagated", fontsize=24, fontweight="bold")
 plt.figure(5)
-plt.suptitle("Scatterer plane fields from backpropagated synthetic fields", fontsize=24, fontweight="bold")
+plt.suptitle("Synthetic fields to be backpropagated", fontsize=24, fontweight="bold")
+plt.figure(6)
+plt.suptitle("Backpropagated synthetic fields", fontsize=24, fontweight="bold")
 
 plt.show()
 

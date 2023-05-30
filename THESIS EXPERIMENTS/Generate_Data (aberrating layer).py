@@ -88,7 +88,7 @@ Memory_Utils.initialize(RESERVED_MEM_CLEAR_CACHE_THRESHOLD_INIT=0.5, ALLOC_TO_RE
 
 
 syntheticWavelength = 0.025*mm #0.025*mm # 0.05*mm
-lambda1 = 1350*nm
+lambda1 = 1250*nm
 lambda2 = lambda1 * syntheticWavelength / (syntheticWavelength - lambda1)
 
 wavelengths = [lambda1, lambda2]
@@ -139,7 +139,7 @@ print()
 do_ffts_inplace = True
 
 scattererList = [
-					Scatterer(location_x=-0.4*mm, location_y=-0.3*mm, diameter=0.01*mm, scatteringResponse=0.73),
+					Scatterer(location_x=-0.4*mm, location_y=-0.3*mm, diameter=0.012*mm, scatteringResponse=0.86),
 					Scatterer(location_x=-0.3*mm, location_y=0.4*mm, diameter=0.015*mm, scatteringResponse=0.82),
 					Scatterer(location_x=0.35*mm, location_y=0*mm, diameter=0.015*mm, scatteringResponse=0.78),
 				]
