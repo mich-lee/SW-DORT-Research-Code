@@ -197,7 +197,7 @@ def visualizeScattererPlaneField(
 								):
 	field.visualize(flag_axis=True, plot_type=plot_type, cmap=plot_cmap)
 	if plotScatterers:
-		plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='x', alpha=0.5, linewidths=2, color='red', edgecolor='red', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
+		plt.scatter(scattererLocsY, scattererLocsX, s=192, marker='x', alpha=0.75, linewidths=4, color='red', edgecolor='red', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	if xLims is not None:
 		plt.xlim(xLims)
 	if yLims is not None:
@@ -225,7 +225,8 @@ gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 ################################################################################################################################
 # dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'
-dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-29_16h06m12s.pt'
+# dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-29_16h06m12s.pt'
+dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-31_16h36m58s.pt'
 ################################################################################################################################
 # IMPORTANT NOTE:
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
@@ -313,9 +314,84 @@ syntheticWavelength = float((loadedData['Field_Input_Prototype'].wavelengths.dat
 
 # Plotting
 
+
+# For making a specific figure
+plt.figure(20)
+vecIn = V[... , :, 0]
+fieldIn, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
+											samplingBoolMask=inputBoolMask,
+											fieldPrototype=loadedData['Field_Input_Prototype'],
+											inputModel=inputModel, backpropModel=backpropModel,
+											doSyntheticWavelengths=False
+										)
+plt.subplot(2, 3, 1)
+get_field_slice(fieldIn, channel_inds_range=0).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+plt.title(r"$u_{slm}(x, y; \lambda_1)$", fontsize=36)
+plt.subplot(2, 3, 4)
+get_field_slice(fieldIn, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+plt.title(r"$u_{slm}(x, y; \lambda_2)$", fontsize=36)
+plt.subplot(2, 3, 2)
+get_field_slice(backpropModelInputField, channel_inds_range=0).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+plt.title(r"$u_{out}(x, y; \lambda_1)$", fontsize=36)
+plt.subplot(2, 3, 5)
+get_field_slice(backpropModelInputField, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+plt.title(r"$u_{out}(x, y; \lambda_2)$", fontsize=36)
+fieldIn, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
+											samplingBoolMask=inputBoolMask,
+											fieldPrototype=loadedData['Field_Input_Prototype'],
+											inputModel=inputModel, backpropModel=backpropModel,
+											doSyntheticWavelengths=True
+										)
+plt.subplot(2, 3, 3)
+backpropModelInputField.visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
+plt.subplot(2, 3, 6)
+visualizeScattererPlaneField(	field=fieldOut,
+								xLims=xLims1, yLims=yLims1,
+								titleStr="",
+								titleFontSize=subplotTitleFontSize,
+								plotScatterers=False, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+								plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+								plot_cmap='turbo'
+							)
+
+
+
 for i in range(numToPlot):
 	vecIn = V[... , :, i]
-	fieldIn, _, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
+	fieldIn, _, _ = getFieldsAtScattererPlane(	vecIn=vecIn,
+												samplingBoolMask=inputBoolMask,
+												fieldPrototype=loadedData['Field_Input_Prototype'],
+												inputModel=inputModel, backpropModel=backpropModel,
+												doSyntheticWavelengths=False
+											)
+	fieldTemp = preScattereModel(fieldIn)
+	plt.figure(0)
+	plt.subplot(2, numToPlot, i + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=0),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+									plot_cmap='turbo'
+								)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=1),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[1]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+									plot_cmap='turbo'
+								)
+
+plt.suptitle("Backpropagated fields (with aberrating layer model)", fontsize=24, fontweight="bold")
+
+
+
+for i in range(numToPlot):
+	vecIn = V[... , :, i]
+	fieldIn, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
 												samplingBoolMask=inputBoolMask,
 												fieldPrototype=loadedData['Field_Input_Prototype'],
 												inputModel=inputModel, backpropModel=backpropModel,
@@ -358,6 +434,7 @@ for i in range(numToPlot):
 								)
 
 
+
 plt.figure(1)
 plt.suptitle("Input fields from right singular vectors", fontsize=24, fontweight="bold")
 plt.figure(2)
@@ -388,6 +465,9 @@ for i in range(numToPlot):
 	plt.subplot(2, numToPlot, i + 1)
 	backpropModelInputField.visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	backpropModelInputField.visualize(cmap='twilight', flag_axis=True, plot_type=ENUM_PLOT_TYPE.PHASE)
+	plt.title(r"From the %s right singular vectors (Phase)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 
 	plt.figure(5)
 	plt.subplot(2, numToPlot, i + 1)
