@@ -204,7 +204,8 @@ def visualizeScattererPlaneField(
 		plt.ylim(yLims)
 	if titleStr is not None:
 		plt.title(titleStr, fontsize=titleFontSize)
-	plt.legend()
+	if plotScatterers:
+		plt.legend()
 
 
 ################################################################################################################################
@@ -225,8 +226,9 @@ gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 ################################################################################################################################
 # dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'
-# dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-29_16h06m12s.pt'
-dataFilePath = 'DATA/THESIS DATA/Experiment_2023-5-31_16h36m58s.pt'
+# dataFilePath = 'DATA/THESIS DATA (OLD)/Experiment_2023-5-29_16h06m12s.pt'
+# dataFilePath = 'DATA/THESIS DATA (OLD)/Experiment_2023-5-31_16h36m58s.pt'
+dataFilePath = 'DATA/THESIS DATA/Experiment_2023-6-3_09h26m16s.pt'
 ################################################################################################################################
 # IMPORTANT NOTE:
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
@@ -324,27 +326,45 @@ fieldIn, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=ve
 											inputModel=inputModel, backpropModel=backpropModel,
 											doSyntheticWavelengths=False
 										)
-plt.subplot(2, 3, 1)
+plt.subplot(2, 4, 1)
 get_field_slice(fieldIn, channel_inds_range=0).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title(r"$u_{slm}(x, y; \lambda_1)$", fontsize=36)
-plt.subplot(2, 3, 4)
+plt.subplot(2, 4, 5)
 get_field_slice(fieldIn, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title(r"$u_{slm}(x, y; \lambda_2)$", fontsize=36)
-plt.subplot(2, 3, 2)
+plt.subplot(2, 4, 2)
 get_field_slice(backpropModelInputField, channel_inds_range=0).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title(r"$u_{out}(x, y; \lambda_1)$", fontsize=36)
-plt.subplot(2, 3, 5)
+plt.subplot(2, 4, 6)
 get_field_slice(backpropModelInputField, channel_inds_range=1).visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
 plt.title(r"$u_{out}(x, y; \lambda_2)$", fontsize=36)
+plt.subplot(2, 4, 3)
+visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=0),
+								xLims=xLims1, yLims=yLims1,
+								titleStr="",
+								titleFontSize=subplotTitleFontSize,
+								plotScatterers=False, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+								plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+								plot_cmap='turbo'
+							)
+plt.subplot(2, 4, 7)
+visualizeScattererPlaneField(	field=get_field_slice(fieldOut, channel_inds_range=1),
+								xLims=xLims1, yLims=yLims1,
+								titleStr="",
+								titleFontSize=subplotTitleFontSize,
+								plotScatterers=False, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+								plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+								plot_cmap='turbo'
+							)
 fieldIn, backpropModelInputField, fieldOut = getFieldsAtScattererPlane(	vecIn=vecIn,
 											samplingBoolMask=inputBoolMask,
 											fieldPrototype=loadedData['Field_Input_Prototype'],
 											inputModel=inputModel, backpropModel=backpropModel,
 											doSyntheticWavelengths=True
 										)
-plt.subplot(2, 3, 3)
+plt.subplot(2, 4, 4)
 backpropModelInputField.visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
-plt.subplot(2, 3, 6)
+plt.subplot(2, 4, 8)
 visualizeScattererPlaneField(	field=fieldOut,
 								xLims=xLims1, yLims=yLims1,
 								titleStr="",
@@ -386,6 +406,11 @@ for i in range(numToPlot):
 								)
 
 plt.suptitle("Backpropagated fields (with aberrating layer model)", fontsize=24, fontweight="bold")
+
+
+
+
+
 
 
 

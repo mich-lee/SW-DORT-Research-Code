@@ -144,7 +144,7 @@ scattererList = [
 					Scatterer(location_x=0.35*mm, location_y=0*mm, diameter=0.015*mm, scatteringResponse=0.78),
 				]
 
-inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
+inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, interpolationMode='nearest', device=device)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)

@@ -167,7 +167,7 @@ scattererDrawing.drawLine(0.45*mm, -0.3*mm, -0.45*mm, 0.3*mm, 200, 0.05*mm, 0.05
 scattererDrawing.drawLine(-0.45*mm, 0.3*mm, 0.45*mm, 0.3*mm, 200, 0.05*mm, 0.05*mm, 0.79, 0.8)
 scattererList = scattererDrawing.getScattererList()
 
-inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, device=device)
+inputResampler = Field_Resampler(outputHeight=intermediateRes[0], outputWidth=intermediateRes[1], outputPixel_dx=intermediateSpacing, outputPixel_dy=intermediateSpacing, interpolationMode='nearest', device=device)
 scattererModel = ScattererModel(scattererList)
 memoryReclaimer = Memory_Reclaimer(device=device, clear_cuda_cache=True, collect_garbage=True,
 										print_cleaning_actions=False, print_memory_status=False, print_memory_status_printType=2)
