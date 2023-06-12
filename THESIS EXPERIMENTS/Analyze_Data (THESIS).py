@@ -225,9 +225,6 @@ use_cuda = True
 gpu_no = 0
 device = torch.device("cuda:"+str(gpu_no) if use_cuda else "cpu")
 ################################################################################################################################
-# dataFilePath = 'DATA/Temp3/Experiment_2023-5-9_14h51m01s.pt'
-# dataFilePath = 'DATA/THESIS DATA (OLD)/Experiment_2023-5-29_16h06m12s.pt'
-# dataFilePath = 'DATA/THESIS DATA (OLD)/Experiment_2023-5-31_16h36m58s.pt'
 dataFilePath = 'DATA/THESIS DATA/Experiment_2023-6-3_09h26m16s.pt'
 ################################################################################################################################
 # IMPORTANT NOTE:
