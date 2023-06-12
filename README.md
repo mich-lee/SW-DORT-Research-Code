@@ -6,7 +6,7 @@ A repository containing code I wrote for testing synthetic wavelength DORT (SW-D
 - Notes on scripts
   - Scripts starting with "Generate_Data"
     - These scripts generate data files containing data
-      - These data files contain the transfer matrix among other data (e.g. data needed to perform backpropagation)
+      - These data files contain the transfer matrix along with other data (e.g. data needed to perform backpropagation)
     - One defines an optical system in these scripts
     - A transfer matrix that relates the system input to the system output is computed
   - Scripts starting with "Analyze_Data"
