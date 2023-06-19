@@ -373,7 +373,8 @@ visualizeScattererPlaneField(	field=fieldOut,
 
 
 
-for i in range(numToPlot):
+# For making a specific figure
+for i in range(6):
 	vecIn = V[... , :, i]
 	fieldIn, _, _ = getFieldsAtScattererPlane(	vecIn=vecIn,
 												samplingBoolMask=inputBoolMask,
@@ -382,20 +383,52 @@ for i in range(numToPlot):
 												doSyntheticWavelengths=False
 											)
 	fieldTemp = preScattereModel(fieldIn)
-	plt.figure(0)
-	plt.subplot(2, numToPlot, i + 1)
+	plt.figure(100)
+	plt.subplot(2, 6, i + 1)
 	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=0),
 									xLims=xLims1, yLims=yLims1,
-									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
+									titleStr=r"From right singular vector #%d" "\n" "Magnitude Plot" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
 									titleFontSize=subplotTitleFontSize,
 									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
 									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
 									plot_cmap='turbo'
 								)
-	plt.subplot(2, numToPlot, numToPlot + i + 1)
+	plt.subplot(2, 6, 6 + i + 1)
 	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=1),
 									xLims=xLims1, yLims=yLims1,
-									titleStr=r"From right singular vector #%d (Magnitude)" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[1]) * 1e9),
+									titleStr=r"From right singular vector #%d" "\n" "Magnitude Plot" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[1]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+									plot_cmap='turbo'
+								)
+
+plt.suptitle("Backpropagated fields (with aberrating layer model)", fontsize=24, fontweight="bold")
+
+# For making a specific figure
+for i in range(6, 12):
+	vecIn = V[... , :, i]
+	fieldIn, _, _ = getFieldsAtScattererPlane(	vecIn=vecIn,
+												samplingBoolMask=inputBoolMask,
+												fieldPrototype=loadedData['Field_Input_Prototype'],
+												inputModel=inputModel, backpropModel=backpropModel,
+												doSyntheticWavelengths=False
+											)
+	fieldTemp = preScattereModel(fieldIn)
+	plt.figure(101)
+	plt.subplot(2, 6, i - 6 + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=0),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d" "\n" "Magnitude Plot" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[0]) * 1e9),
+									titleFontSize=subplotTitleFontSize,
+									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
+									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
+									plot_cmap='turbo'
+								)
+	plt.subplot(2, 6, 6 + i - 6 + 1)
+	visualizeScattererPlaneField(	field=get_field_slice(fieldTemp, channel_inds_range=1),
+									xLims=xLims1, yLims=yLims1,
+									titleStr=r"From right singular vector #%d" "\n" "Magnitude Plot" "\n" r"$\lambda$ = %.3f nm" % (i+1, float(loadedData['Field_Input_Prototype'].wavelengths.data_tensor[1]) * 1e9),
 									titleFontSize=subplotTitleFontSize,
 									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
 									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
