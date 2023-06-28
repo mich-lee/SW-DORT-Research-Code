@@ -21,7 +21,7 @@ A repository containing code I wrote for testing synthetic wavelength DORT (SW-D
   - The ``holotorch-lib`` is not contained in this repository.  It is contained at https://github.com/mich-lee/holofork
   - Download the repository at https://github.com/mich-lee/holofork and have that repository as the 'holotorch-lib' folder
   - ***Make sure to use the most recent https://github.com/mich-lee/holofork commit that is dated at or before the commit on this repository (https://github.com/mich-lee/SW-DORT-Research-Code/) that you are using***
-    - At the time of writing, Commit 16772c500acd761ab7756767b4167888257249d2 on https://github.com/mich-lee/holofork would be the commit to use (assuming that one is working with the most recent commit on this repository, i.e. https://github.com/mich-lee/SW-DORT-Research-Code)
+    - At the time of writing, Commit a27e3fe6990e81a4642bae3e6511e9d6385620e1 on https://github.com/mich-lee/holofork would be the commit to use (assuming that one is working with the most recent commit on this repository, i.e. https://github.com/mich-lee/SW-DORT-Research-Code)
 
 ## IMPORTANT NOTE
 The 'holotorch-lib' folder is contained in this repository: https://github.com/mich-lee/holofork
