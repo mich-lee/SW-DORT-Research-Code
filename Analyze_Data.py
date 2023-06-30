@@ -395,7 +395,10 @@ for singVecNum in range(500):
 		plt.scatter(scattererLocsY, scattererLocsX, s=96, marker='o', alpha=0.5, color='red', edgecolor='none', label='Scatterer')		# X and Y are switched because HoloTorch has the horizontal and vertical dimensions switched (relative to what the plots consider as horizontal and vertical)
 	plt.xlim(xLims1)
 	plt.ylim(yLims1)
-	plt.title("$\Lambda$ - Singular Value #" + str(singVecNum + 1))
+	if doSyntheticWavelengths:
+		plt.title("$\Lambda$ - Singular Value #" + str(singVecNum + 1))
+	else:
+		plt.title("$\lambda$ - Singular Value #" + str(singVecNum + 1))
 	plt.legend()
 
 	# plt.subplot(nRows1*2, nCols1, subplotNum)

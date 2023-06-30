@@ -519,22 +519,22 @@ for i in range(numToPlot):
 	plt.figure(4)
 	plt.subplot(2, numToPlot, i + 1)
 	backpropModelInputField.visualize(cmap='turbo', flag_axis=True, plot_type=ENUM_PLOT_TYPE.MAGNITUDE)
-	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f mm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 	plt.subplot(2, numToPlot, numToPlot + i + 1)
 	backpropModelInputField.visualize(cmap='twilight', flag_axis=True, plot_type=ENUM_PLOT_TYPE.PHASE)
-	plt.title(r"From the %s right singular vectors (Phase)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.title(r"From the %s right singular vectors (Phase)" "\n" r"$\Lambda$ = %.3f mm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 
 	plt.figure(5)
 	plt.subplot(2, numToPlot, i + 1)
 	visualizeScattererPlaneField(	field=fieldOut,
 									xLims=xLims1, yLims=yLims1, 
-									titleStr="From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3),
+									titleStr="From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f mm" % (numberingStr, syntheticWavelength*1e3),
 									titleFontSize=subplotTitleFontSize,
 									plotScatterers=True, scattererLocsX=scattererLocsX, scattererLocsY=scattererLocsY,
 									plot_type=ENUM_PLOT_TYPE.MAGNITUDE,
 									plot_cmap='turbo'
 								)
-	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f nm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
+	plt.title(r"From the %s right singular vectors (Magnitude)" "\n" r"$\Lambda$ = %.3f mm" % (numberingStr, syntheticWavelength*1e3), fontsize=subplotTitleFontSize)
 
 
 plt.figure(4)
