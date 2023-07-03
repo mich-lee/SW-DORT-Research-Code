@@ -215,7 +215,7 @@ nonSyntheticWavelengthSelectionIndex = 0	# Only relevant if doSyntheticWavelengt
 
 # IMPORTANT NOTE:
 #	See the source code notes above the eigenstructure demixing method ('demixEigenstructure' in the TransferMatrixProcessor class) for more information. 
-doEigenstructureDemixing = True
+doEigenstructureDemixing = False
 singValMagnitudeSimilarityThreshold = 0.15
 
 doPlotting = True
